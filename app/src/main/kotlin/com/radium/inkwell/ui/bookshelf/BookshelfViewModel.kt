@@ -245,6 +245,22 @@ class BookshelfViewModel(
         )
 
     /** 书架上捏合换了一档 */
+    /** 网格 / 列表 切换（顶栏工具条的「列表」） */
+    fun toggleLayout() {
+        viewModelScope.launch {
+            val next = if (layout.value == BookshelfLayout.GRID) BookshelfLayout.LIST else BookshelfLayout.GRID
+            appPrefs.setBookshelfLayout(next)
+        }
+    }
+
+    /** 排序方式：0 = 最近阅读，1 = 最近添加，2 = 书名 */
+    private val _sortMode by mutableStateOf(0)
+    val sortMode: Int get() = _sortMode
+
+    fun cycleSort() {
+        _sortMode = (_sortMode + 1) % 3
+    }
+
     fun setColumns(columns: Int) {
         viewModelScope.launch { appPrefs.setBookshelfColumns(columns) }
     }

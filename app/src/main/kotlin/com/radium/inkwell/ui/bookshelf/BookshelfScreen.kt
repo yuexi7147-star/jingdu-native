@@ -418,6 +418,10 @@ fun BookshelfScreen(
                 count = books.size,
                 tab = shelfTab,
                 onTab = { shelfTab = it },
+                sortMode = viewModel.sortMode,
+                listMode = layout == BookshelfLayout.LIST,
+                onCycleSort = { viewModel.cycleSort() },
+                onToggleLayout = { viewModel.toggleLayout() },
             )
             if (showShelf) {
                 // 只有真的分了组才显示筛选条 —— 没分组的人不该被一排"全部"占掉一行屏幕。
@@ -1421,7 +1425,15 @@ private enum class ImportMenuAnchor { TOOLBAR, EMPTY, WELCOME }
 
 /** 书架头部：页签 + 统计 + 工具条。有书没书都在，导入之后结构不会消失。 */
 @Composable
-private fun ShelfTabsHeader(count: Int, tab: Int, onTab: (Int) -> Unit) {
+private fun ShelfTabsHeader(
+    count: Int,
+    tab: Int,
+    onTab: (Int) -> Unit,
+    sortMode: Int,
+    listMode: Boolean,
+    onCycleSort: () -> Unit,
+    onToggleLayout: () -> Unit,
+) {
     Column(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
         Row(
             Modifier
@@ -1458,17 +1470,19 @@ private fun ShelfTabsHeader(count: Int, tab: Int, onTab: (Int) -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            listOf("最近阅读", "列表", "排序").forEach { label ->
-                Text(
-                    text = label,
-                    fontSize = 12.5.sp,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MiuixTheme.colorScheme.surfaceContainer)
-                        .padding(horizontal = 13.dp, vertical = 7.dp),
-                )
-            }
+            ToolChip(
+                label = when (sortMode) {
+                    0 -> "最近阅读"
+                    1 -> "最近添加"
+                    else -> "书名"
+                },
+                onClick = onCycleSort,
+            )
+            ToolChip(
+                label = if (listMode) "网格" else "列表",
+                onClick = onToggleLayout,
+            )
+            ToolChip(label = "排序", onClick = onCycleSort)
         }
     }
 }
@@ -1532,4 +1546,20 @@ private fun ShelfEmptyBody(
             }
         }
     }
+}
+
+
+/** 工具条上的圆角小按钮 */
+@Composable
+private fun ToolChip(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        fontSize = 12.5.sp,
+        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MiuixTheme.colorScheme.surfaceContainer)
+            .clickable { onClick() }
+            .padding(horizontal = 13.dp, vertical = 7.dp),
+    )
 }
