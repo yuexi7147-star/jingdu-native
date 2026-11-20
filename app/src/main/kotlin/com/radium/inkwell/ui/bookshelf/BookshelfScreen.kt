@@ -1,5 +1,9 @@
 package com.radium.inkwell.ui.bookshelf
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.stateDescription
 import org.koin.compose.koinInject
 import com.radium.inkwell.update.UpdateNotifier
@@ -666,14 +670,10 @@ fun BookshelfScreen(
                 )
             }
         } else if (!showShelf) {
-            EmptyState(
-                icon = MiuixIcons.Notes,
-                title = "书架空空如也",
-                hint = "导入本地 txt / EPUB / MOBI，或用来源搜索书籍",
-                actionLabel = "导入本地书",
-                onAction = { importMenuAt = ImportMenuAnchor.EMPTY },
+            ShelfEmptyLayout(
+                onImport = { importMenuAt = ImportMenuAnchor.EMPTY },
+                importMenu = { importMenu(ImportMenuAnchor.EMPTY) },
                 modifier = Modifier.padding(padding),
-                actionMenu = { importMenu(ImportMenuAnchor.EMPTY) },
             )
         } else {
             // 书铺满整屏、滚到玻璃顶栏下面：外层只让开两侧；顶栏（连同钉在它下面的筛选条）的高度
@@ -1408,3 +1408,123 @@ private val REFRESH_TEXTS = listOf("下拉检查更新", "松开检查更新", "
 
 /** 「导入本地书」菜单挂在哪个按钮上（见 BookshelfScreen 里的 importMenuAt） */
 private enum class ImportMenuAnchor { TOOLBAR, EMPTY, WELCOME }
+
+
+/**
+ * 空书架：按旧版的样子给出结构 —— 书架 / 阅读历史两个页签、统计行、工具条、空提示、底部导入按钮。
+ * 旧版是一整页空白，只剩一句「书架空空如也」，看着像坏了。
+ */
+@Composable
+private fun ShelfEmptyLayout(
+    onImport: () -> Unit,
+    importMenu: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var tab by remember { mutableStateOf(0) }
+
+    Box(modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            // 页签
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Dimens.pageHorizontal, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                listOf("书架", "阅读历史").forEachIndexed { i, label ->
+                    Text(
+                        text = label,
+                        fontSize = if (i == tab) 21.sp else 19.sp,
+                        fontWeight = if (i == tab) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (i == tab) MiuixTheme.colorScheme.onBackground
+                        else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        modifier = Modifier.clickable { tab = i },
+                    )
+                }
+            }
+
+            // 统计行
+            Text(
+                text = if (tab == 0) "0 卷在架" else "还没有阅读记录",
+                fontSize = 12.sp,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier.padding(horizontal = Dimens.pageHorizontal),
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            // 工具条
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Dimens.pageHorizontal),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf("最近阅读", "列表", "排序").forEach { label ->
+                    Text(
+                        text = label,
+                        fontSize = 12.5.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MiuixTheme.colorScheme.surfaceContainer)
+                            .padding(horizontal = 13.dp, vertical = 7.dp),
+                    )
+                }
+            }
+
+            // 空提示
+            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        MiuixIcons.Notes,
+                        contentDescription = null,
+                        modifier = Modifier.size(34.dp),
+                        tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "书架还空着",
+                        fontSize = 15.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "TXT · EPUB · PDF · MOBI · AZW3 · FB2 · CBZ",
+                        fontSize = 11.5.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                }
+            }
+
+            // 底部导入
+            Box(Modifier.fillMaxWidth().padding(horizontal = Dimens.pageHorizontal, vertical = 16.dp)) {
+                Row(
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .clip(RoundedCornerShape(26.dp))
+                        .background(MiuixTheme.colorScheme.primary)
+                        .clickable { onImport() }
+                        .padding(horizontal = 20.dp, vertical = 13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        MiuixIcons.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MiuixTheme.colorScheme.onPrimary,
+                    )
+                    Text(
+                        text = "导入书籍",
+                        fontSize = 14.sp,
+                        color = MiuixTheme.colorScheme.onPrimary,
+                    )
+                }
+                importMenu()
+            }
+        }
+    }
+}
