@@ -38,6 +38,8 @@ val appModule = module {
             .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .build()
     }
+    single { com.radium.inkwell.data.repo.SourceQuarantine(androidContext()) }
+    single { com.radium.inkwell.data.repo.SourceAuditService(get(), get()) }
     single { get<InkwellDb>().bookDao() }
     single { get<InkwellDb>().chapterDao() }
     single { get<InkwellDb>().bookSourceDao() }

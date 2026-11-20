@@ -98,7 +98,31 @@ class SourceManageViewModel(
     private val checker: SourceChecker,
     /** 「从网址导入书源」用；走注入的那个客户端，它配了超时（裸 OkHttpClient() 没有总闸） */
     private val http: OkHttpClient,
+    private val auditService: com.radium.inkwell.data.repo.SourceAuditService,
 ) : ViewModel() {
+
+    // ---- 安全性检查 ----
+    private val _auditRunning = MutableStateFlow(false)
+    val auditRunning: StateFlow<Boolean> = _auditRunning.asStateFlow()
+
+    private val _auditReport = MutableStateFlow<com.radium.inkwell.data.repo.SourceAuditReport?>(null)
+    val auditReport: StateFlow<com.radium.inkwell.data.repo.SourceAuditReport?> = _auditReport.asStateFlow()
+
+    fun runSourceAudit() {
+        if (_auditRunning.value) return
+        viewModelScope.launch {
+            _auditRunning.value = true
+            runCatching { auditService.run() }
+                .onSuccess { _auditReport.value = it }
+                .onFailure { _auditReport.value = com.radium.inkwell.data.repo.SourceAuditReport(0, emptyList()) }
+            _auditRunning.value = false
+        }
+    }
+
+    fun dismissAuditReport() {
+        _auditReport.value = null
+    }
+
 
     // ---- 多选 ----
 
