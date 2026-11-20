@@ -1428,7 +1428,7 @@ private fun ShelfEmptyLayout(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = Dimens.pageHorizontal, vertical = 8.dp),
+                    .padding(horizontal = Dimens.screenPadding, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
             ) {
@@ -1449,7 +1449,7 @@ private fun ShelfEmptyLayout(
                 text = if (tab == 0) "0 卷在架" else "还没有阅读记录",
                 fontSize = 12.sp,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier.padding(horizontal = Dimens.pageHorizontal),
+                modifier = Modifier.padding(horizontal = Dimens.screenPadding),
             )
 
             Spacer(Modifier.height(14.dp))
@@ -1458,7 +1458,7 @@ private fun ShelfEmptyLayout(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = Dimens.pageHorizontal),
+                    .padding(horizontal = Dimens.screenPadding),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -1500,7 +1500,7 @@ private fun ShelfEmptyLayout(
             }
 
             // 底部导入
-            Box(Modifier.fillMaxWidth().padding(horizontal = Dimens.pageHorizontal, vertical = 16.dp)) {
+            Box(Modifier.fillMaxWidth().padding(horizontal = Dimens.screenPadding, vertical = 16.dp)) {
                 Row(
                     Modifier
                         .align(Alignment.CenterEnd)
