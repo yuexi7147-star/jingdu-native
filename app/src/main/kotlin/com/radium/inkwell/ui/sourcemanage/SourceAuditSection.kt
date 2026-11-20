@@ -48,7 +48,7 @@ fun SourceAuditSection(
         SettingGroup {
             SettingRow(
                 title = "检查并移除不合规来源",
-                summary = "移除需要登录的来源，以及含违规内容的来源（可在隔离区恢复）",
+                subtitle = "移除需要登录的来源，以及含违规内容的来源（可在隔离区恢复）",
                 position = SettingGroupPosition.Alone,
                 onClick = if (running) null else onRun,
                 trailing = {
@@ -79,7 +79,7 @@ private fun AuditReportDialog(report: SourceAuditReport, onDismiss: () -> Unit) 
 
     AppAlertDialog(
         title = if (report.isEmpty) "检查完毕" else "已移除 ${report.removed.size} 个来源",
-        confirm = "知道了",
+        confirmText = "知道了",
         onConfirm = onDismiss,
         onDismissRequest = onDismiss,
     ) {

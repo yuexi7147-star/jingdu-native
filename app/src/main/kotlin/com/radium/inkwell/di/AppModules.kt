@@ -161,7 +161,7 @@ val appModule = module {
     single { com.radium.inkwell.ui.sourcemanage.SourceChecker(get(), get(), get()) }
     // 整本缓存同理：离开详情页照常跑
     single { com.radium.inkwell.data.repo.OfflineDownloader(get(), get(), get(), get(), get()) }
-    viewModel { SourceManageViewModel(androidContext(), get(), get(), get()) }
+    viewModel { SourceManageViewModel(androidContext(), get(), get(), get(), get()) }
     viewModel { (sourceId: String) -> SourceDetailViewModel(sourceId, get(), get(), get()) }
     viewModel { com.radium.inkwell.ui.sourcewizard.SourceWizardViewModel(get(), get(), get(), get()) }
     viewModel { WebDavViewModel(get(), get(), get(), get()) }

@@ -19,7 +19,7 @@ class SourceAuditService(
     suspend fun run(): SourceAuditReport = withContext(Dispatchers.IO) {
         val ids = db.bookSourceDao().getAllIds()
         // 书按来源分组，一次读完，别在循环里按 id 反复查
-        val booksBySource = db.bookDao().getAll().groupBy { it.sourceId ?:  }
+        val booksBySource = db.bookDao().getAll().groupBy { it.sourceId ?: "" }
 
         val hits = mutableListOf<SourceAuditReport.Removed>()
         val entries = mutableListOf<SourceQuarantine.Entry>()
