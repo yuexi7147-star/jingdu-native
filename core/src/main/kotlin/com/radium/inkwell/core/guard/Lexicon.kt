@@ -42,6 +42,7 @@ object Lexicon {
      */
     private val STYLE_LABEL = listOf(
         // 耽美 / 男男
+        "言情", "言情小说", "言情文",
         "耽美", "danmei", "bl小说", "bl文学", "bl文", "bl网",
         "boys love", "yaoi", "断袖", "契兄弟", "男男",
         // 百合 / 女女
