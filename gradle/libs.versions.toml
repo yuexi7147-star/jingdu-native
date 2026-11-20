@@ -1,0 +1,150 @@
+[versions]
+# 应用版本唯一来源：versionCode 由它推导，Release tag 必须与之一致（vX.Y.Z）
+inkwell = "0.6.0"
+agp = "9.5.0"
+kotlin = "2.4.21"
+# KSP 自 2.3.0 起改用独立版本号（不再是「Kotlin版本-KSP版本」）。
+# 2.3.10 起已兼容 Kotlin 2.4 的默认 module name（`${group}:${name}` 里的冒号）。
+# 2.3.14 修复并发执行时库符号丢失的回归，跳过有该问题的 2.3.13；继续搭配 Kotlin 2.4.2x。
+ksp = "2.3.14"
+coroutines = "1.11.0"
+# 1.13.0 撤回 1.12.0 对序列化异常的包装行为，并改善 JsonElement.toString 性能。
+serialization = "1.13.0"
+# **稳定的 compose-bom**（Compose 1.12.x）。从前用 compose-bom-alpha（1.13 beta）是为了 M3 Expressive，
+# 那批 API 只活在 material3 alpha 通道；UI 换成 Miuix、material3 删掉之后这条理由没了。
+# 回稳定版的直接理由：Miuix 0.9.4 是对着 Compose 1.12 构建的，跑在 1.13 beta 上等于拿它没测过的二进制组合碰运气。
+# 升 BOM 前先读 release notes 的 breaking change，并对一下 Miuix 当前版本对着哪一版 Compose 构建，别盲升。
+composeBom = "2026.09.00"
+# UI 组件库：Miuix（HyperOS 设计语言，Compose Multiplatform）。只依赖 foundation，不依赖 material3 组件。
+# 0.x 实验线，作者明说 API 可能不打招呼就改 —— 升级前先读 release notes 的 breaking change，
+# 跟 BOM 一样别盲升。它对着 Compose 1.12 构建，在我们的 alpha BOM（1.13 beta）上会被抬版本运行。
+miuix = "0.9.4"
+activityCompose = "1.13.0"
+# Navigation 3（与 Nav2 navigation-compose 不兼容，整图迁移）
+navigation3 = "1.2.0"
+# Material 3 Adaptive + Nav3 ListDetailSceneStrategy
+# 与稳定 BOM（2026.09.00）带的 adaptive 版本一致。从前 alpha BOM 把整组钉在 1.4.0-alpha 线上
+material3Adaptive = "1.3.0"
+# 与 compose BOM 传递拉起的版本对齐：写低了也会被 compose 的依赖抬到这个数，
+# 声明和实际不符只会让下次排查照着 toml 找错方向
+lifecycle = "2.11.0"
+# Room 3 = Room 的 KMP 重构后继线，坐标整体换到 **androidx.room3**（2.x 转入维护）。
+# 不是「换个版本号」：迁移 API 换了模型 —— Migration.migrate 从
+# `fun (SupportSQLiteDatabase)` 变成 `suspend fun (SQLiteConnection)`，
+# 库内事务从 `withTransaction` 拆成 `withReadTransaction` / `withWriteTransaction`。
+# 另外没有 room3-ktx 了（并进 runtime），别照着 2.x 的依赖表加。
+room = "3.0.3"
+# 只给单测用：电脑上能跑的 SQLite（BundledSQLiteDriver），测迁移里的 SQL。版本跟 Room 带的 androidx.sqlite 走，
+# 升 Room 时一起对一下（./gradlew :app:dependencies | grep sqlite）
+sqlite = "2.7.1"
+datastore = "1.3.0"
+koin = "4.2.2"
+okhttp = "5.5.1"
+jsoup = "1.23.2"
+# Jsoup 1.23 的 API 带着 jspecify @Nullable，但 jsoup 自己是 provided，不会传递过来。
+# Kotlin 2.4 禁止推断带不可见声明的类型 —— 不把注解放进编译 classpath，
+# `selectFirst(...)?.let { }` 这种推断就会炸。compileOnly：只给编译器看，不进包。
+jspecify = "1.0.1"
+# 1.9.2 起 Rhino 对象默认禁止 Java 序列化。我们只走解释模式（ScriptRuntime 里 optimizationLevel = -1）、
+# 从不序列化 Rhino 对象，不受影响；这一版顺带修了 Object.fromEntries / Math / Generator 几处书源 JS 会踩的行为。
+rhino = "1.9.2"
+juniversalchardet = "2.5.2"
+jsonPath = "3.0.0"
+xpath = "2.5.5"
+biometric = "1.4.0-alpha07"
+coil = "3.6.3"
+# Baseline Profile：把热方法在**安装时**就 AOT 编译好。没有它，全新安装后 ART 先解释执行、
+# 边跑边 JIT —— 实测同一台机器反复进书，卡顿从 65ms 一路降到 16ms，那条下降曲线就是 JIT
+# 在热身。而真实用户每次都是"第一次"，永远吃不到热身后的那个数。
+#
+# 用 1.5.0 不是图新：稳定版 1.4.1 不认 AGP 9，配置期就炸
+# （"Module `:app` is not a supported android module"），1.5.0 线才支持。
+# 别"顺手降回 1.4.x"。它只跑在构建期和 :baselineprofile 模块里，**不进包**，风险到此为止。
+benchmark = "1.5.0"
+profileinstaller = "1.4.1"
+uiautomator = "2.4.0"
+junit = "4.13.2"
+androidxTest = "1.7.0"
+androidxTestJunit = "1.3.0"
+
+[libraries]
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
+compose-ui-text = { module = "androidx.compose.ui:ui-text" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+miuix-ui = { module = "top.yukonga.miuix.kmp:miuix-ui", version.ref = "miuix" }
+# AppDropdownMenu 用的 WindowDropdownPopup 在这个模块里（miuix-ui 只有底层的 WindowListPopup）。
+# 名字像「设置项」的库，别当成没用到删掉 —— 删了下拉菜单就编不过
+miuix-preference = { module = "top.yukonga.miuix.kmp:miuix-preference", version.ref = "miuix" }
+# HyperOS 线条图标（返回、更多、搜索、删除…）。它没有的图标仍用 material-icons-extended
+miuix-icons = { module = "top.yukonga.miuix.kmp:miuix-icons", version.ref = "miuix" }
+# 顶栏、阅读器菜单的毛玻璃（LayerBackdrop + textureBlur）。要 API 33（RuntimeShader），我们 minSdk 35，不用降级分支
+miuix-blur = { module = "top.yukonga.miuix.kmp:miuix-blur", version.ref = "miuix" }
+compose-material-icons = { module = "androidx.compose.material:material-icons-extended" }
+
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
+androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
+androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycle" }
+androidx-material3-adaptive = { module = "androidx.compose.material3.adaptive:adaptive", version.ref = "material3Adaptive" }
+androidx-material3-adaptive-layout = { module = "androidx.compose.material3.adaptive:adaptive-layout", version.ref = "material3Adaptive" }
+androidx-material3-adaptive-navigation3 = { module = "androidx.compose.material3.adaptive:adaptive-navigation3", version.ref = "material3Adaptive" }
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+# ProcessLifecycleOwner：App 退到后台时把进度同步上去
+androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+
+room-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
+sqlite-bundled-jvm = { module = "androidx.sqlite:sqlite-bundled-jvm", version.ref = "sqlite" }
+datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
+# Nav3 entry 作用域 VM：只用 org.koin.compose.viewmodel.koinViewModel。
+# koin-androidx-compose 被**故意**不引入：它的同名 koinViewModel 绑的是 Activity 的
+# ViewModelStore，在 Nav3 下退栈不清（Koin#2235）—— 依赖不在，就没人能误 import 回去。
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
+
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "okhttp" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTest" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestJunit" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+rhino = { module = "org.mozilla:rhino", version.ref = "rhino" }
+juniversalchardet = { module = "com.github.albfernandez:juniversalchardet", version.ref = "juniversalchardet" }
+json-path = { module = "com.jayway.jsonpath:json-path", version.ref = "jsonPath" }
+# JsoupXpath（Apache-2.0）：Legado 的 @XPath 规则用的就是它
+xpath = { module = "cn.wanghaomiao:JsoupXpath", version.ref = "xpath" }
+# 系统级生物识别（指纹/面容），并支持退回设备密码 —— 没录指纹的人不该被锁在外面
+androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
+
+androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
+androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
+androidx-test-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
+
+junit = { module = "junit:junit", version.ref = "junit" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+# com.android.test：Baseline Profile 的生成器模块用它（测试代码与被测 App 分属两个进程，
+# 这是 macrobenchmark 能测"冷启动"的前提 —— 同进程里测不了自己的冷启动）
+android-test = { id = "com.android.test", version.ref = "agp" }
+androidx-baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

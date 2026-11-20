@@ -1,0 +1,196 @@
+package com.radium.inkwell.core.webdav
+
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Credentials
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import java.io.IOException
+import kotlin.coroutines.resumeWithException
+
+/**
+ * 极简 WebDAV 客户端：只覆盖备份所需的几个动词（MKCOL/PUT/GET/HEAD/PROPFIND）。
+ * 不引第三方 sardine——年久失修且依赖重。
+ */
+class WebDavClient(
+    baseUrl: String,
+    private val username: String,
+    private val password: String,
+    http: OkHttpClient = OkHttpClient(),
+) {
+    /**
+     * 备份体积可观（整个书架 + 全部书源的 JSON），慢网上传要时间，所以**不设 callTimeout**；
+     * 但连接和逐段读写必须有限 —— 服务器半死不活时（NAS 休眠、坚果云限流）不能让同步永远挂着，
+     * 那会把「自动同步」变成每次启动都卡一下的隐形负担。
+     */
+    private val http: OkHttpClient = http.newBuilder()
+        .connectTimeout(java.time.Duration.ofSeconds(15))
+        .readTimeout(java.time.Duration.ofSeconds(30))
+        .writeTimeout(java.time.Duration.ofSeconds(30))
+        .build()
+
+    private val base = baseUrl.trimEnd('/')
+
+    class WebDavException(val code: Int, message: String) : IOException(message)
+
+    /** 建目录；已存在（405）视为成功 */
+    suspend fun mkcol(path: String) {
+        val resp = execute(request(path).method("MKCOL", null).build())
+        resp.use {
+            if (!it.isSuccessful && it.code != 405) {
+                throw WebDavException(it.code, "MKCOL 失败: ${it.code}")
+            }
+        }
+    }
+
+    suspend fun put(path: String, bytes: ByteArray, contentType: String = "application/octet-stream") {
+        val resp = execute(
+            request(path).put(bytes.toRequestBody(contentType.toMediaType())).build()
+        )
+        resp.use {
+            if (!it.isSuccessful) throw WebDavException(it.code, "PUT 失败: ${it.code}")
+        }
+    }
+
+    /** 文件与版本必须来自同一次 GET，不能拿另一次 HEAD 的版本给这份正文作担保。 */
+    data class Snapshot(val bytes: ByteArray, val etag: String?)
+
+    suspend fun getSnapshot(path: String): Snapshot? {
+        execute(request(path).get().build()).use { response ->
+            return when {
+                response.code == 404 || response.code == 409 -> null
+                response.isSuccessful -> withContext(Dispatchers.IO) {
+                    Snapshot(response.body.bytes(), response.strongEtag())
+                }
+                else -> throw WebDavException(response.code, "GET 失败: ${response.code}")
+            }
+        }
+    }
+
+    /**
+     * 创建用 If-None-Match:*，更新用 GET 返回的强 ETag；412 交给上层重读并合并。
+     * 返回值只认这次 PUT 自己的响应头。随后 HEAD 可能看到别的设备的上传，不能记作已同步。
+     */
+    suspend fun putConditional(path: String, bytes: ByteArray, etag: String?): String? {
+        val builder = request(path).put(bytes.toRequestBody("application/gzip".toMediaType()))
+        if (etag == null) builder.header("If-None-Match", "*") else builder.header("If-Match", etag)
+        execute(builder.build()).use { response ->
+            if (!response.isSuccessful) throw WebDavException(response.code, "PUT 失败: ${response.code}")
+            return response.strongEtag()
+        }
+    }
+
+    private fun Response.strongEtag(): String? = header("ETag")
+        ?.trim()?.takeIf { it.startsWith('"') && it.endsWith('"') && it.length >= 2 }
+
+    /**
+     * 取文件；不存在返回 null。
+     *
+     * 409 也当作不存在：GET 本身没有「冲突」语义，服务端回 409 只可能是**父目录不存在**
+     * （坚果云就是这么回的，而不是 404）。首次同步时 inkwell/ 目录还没建，
+     * 于是「读远端备份」直接报 `GET 失败: 409`，同步一次都成功不了。
+     */
+    suspend fun get(path: String): ByteArray? {
+        val resp = execute(request(path).get().build())
+        resp.use {
+            return when {
+                it.code == 404 || it.code == 409 -> null
+                it.isSuccessful -> withContext(Dispatchers.IO) { it.body.bytes() }
+                else -> throw WebDavException(it.code, "GET 失败: ${it.code}")
+            }
+        }
+    }
+
+    /**
+     * 文件的版本标记：ETag，没有就退回 Last-Modified + 长度。不存在、或服务器两样都不给，返回 null ——
+     * 调用方据此判断「远端从上次同步以来动没动过」，拿不准（null）就当动过，照常完整同步。
+     * 用 HEAD：只为一个响应头，别把几 MB 的备份下下来。
+     */
+    suspend fun version(path: String): String? {
+        val resp = execute(request(path).head().build())
+        resp.use {
+            if (!it.isSuccessful) return null
+            it.header("ETag")?.takeIf { tag -> tag.isNotBlank() }?.let { tag -> return "etag:$tag" }
+            val modified = it.header("Last-Modified")?.takeIf { m -> m.isNotBlank() } ?: return null
+            return "mtime:$modified:${it.header("Content-Length").orEmpty()}"
+        }
+    }
+
+    /** PROPFIND Depth:1，返回子项名（不含自身） */
+    suspend fun list(path: String): List<String> {
+        val body = """<?xml version="1.0"?>
+            <d:propfind xmlns:d="DAV:"><d:prop><d:displayname/></d:prop></d:propfind>"""
+            .toRequestBody("application/xml".toMediaType())
+        val resp = execute(
+            request(path).method("PROPFIND", body).header("Depth", "1").build()
+        )
+        resp.use {
+            if (it.code == 404) return emptyList()
+            if (!it.isSuccessful && it.code != 207) {
+                throw WebDavException(it.code, "PROPFIND 失败: ${it.code}")
+            }
+            val xml = withContext(Dispatchers.IO) { it.body.string() }
+            return parseHrefs(xml, path)
+        }
+    }
+
+    /** 连接与认证探活 */
+    suspend fun check(): Result<Unit> = try {
+        list("")
+        Result.success(Unit)
+    } catch (e: CancellationException) {
+        // 用户在测试连接转圈时退出页面：这是取消，别包成「连接失败」吞掉
+        throw e
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    private fun request(path: String): Request.Builder {
+        // 集合根必须带尾斜杠。官方盘 Nginx 对 /dav 会 301 到 /dav/，
+        // 部分客户端跟着跳时会把 PROPFIND 收成 GET，再 405。子路径保持无斜杠。
+        val trimmed = path.trim('/')
+        val url = if (trimmed.isEmpty()) "$base/" else "$base/$trimmed"
+        return Request.Builder()
+            .url(url)
+            // UTF-8 而非默认 ISO-8859-1：中文用户名/密码在默认编码下会被替换成 ?，恒 401
+            .header("Authorization", Credentials.basic(username, password, Charsets.UTF_8))
+    }
+
+    private suspend fun execute(request: Request): Response =
+        suspendCancellableCoroutine { cont ->
+            val call = http.newCall(request)
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    cont.resumeWithException(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    // 响应到达与取消撞车时把它关掉，别让连接泄漏在池外
+                    cont.resume(response) { _, _, _ -> response.close() }
+                }
+            })
+        }
+
+    /** 从 multistatus 里抽 href 的最后一段名；集合自身条目（以请求路径结尾）被剔除 */
+    private fun parseHrefs(xml: String, selfPath: String): List<String> {
+        val selfNorm = selfPath.trim('/').lowercase()
+        return HREF_REGEX.findAll(xml)
+            .map { java.net.URLDecoder.decode(it.groupValues[1].trim(), "UTF-8").trim('/') }
+            .filter { it.isNotEmpty() }
+            .filterNot { href -> href.lowercase().endsWith(selfNorm) && selfNorm.isNotEmpty() }
+            .map { it.substringAfterLast('/') }
+            .toList()
+    }
+
+    private companion object {
+        val HREF_REGEX = Regex("<(?:[a-zA-Z0-9]+:)?href[^>]*>([^<]+)</(?:[a-zA-Z0-9]+:)?href>", RegexOption.IGNORE_CASE)
+    }
+}

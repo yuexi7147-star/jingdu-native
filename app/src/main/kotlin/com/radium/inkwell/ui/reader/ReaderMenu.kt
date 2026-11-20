@@ -1,0 +1,2102 @@
+package com.radium.inkwell.ui.reader
+
+import com.radium.inkwell.ui.components.blockTouchesBelow
+import com.radium.inkwell.ui.components.sheetBottomInset
+import com.radium.inkwell.util.UsageLog
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BrightnessHigh
+import androidx.compose.material.icons.outlined.BrightnessLow
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.text.TextStyle
+import com.radium.inkwell.ui.theme.AppTheme
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.SliderDefaults
+import top.yukonga.miuix.kmp.icon.basic.ArrowRight
+import top.yukonga.miuix.kmp.layout.BottomSheetDefaults
+import kotlin.math.roundToInt
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.runtime.mutableFloatStateOf
+import top.yukonga.miuix.kmp.squircle.squircleBackground
+import top.yukonga.miuix.kmp.squircle.squircleClip
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.PaddingValues
+import com.radium.inkwell.ui.components.AppFilterChip
+import com.radium.inkwell.ui.components.AppIconButton
+import com.radium.inkwell.ui.components.AppDropdownMenu
+import com.radium.inkwell.ui.components.AppMenuItem
+import com.radium.inkwell.ui.components.AppSlider
+import com.radium.inkwell.ui.components.AppTextButton
+import androidx.compose.animation.AnimatedVisibility
+import com.radium.inkwell.ui.components.SheetPageHeader
+import com.radium.inkwell.ui.components.SheetPages
+import com.radium.inkwell.ui.components.bottomBarEnter
+import com.radium.inkwell.ui.components.bottomBarExit
+import com.radium.inkwell.ui.components.scrimEnter
+import com.radium.inkwell.ui.components.scrimExit
+import com.radium.inkwell.ui.components.topBarEnter
+import com.radium.inkwell.ui.components.topBarExit
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.flow.StateFlow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.radium.inkwell.ui.components.SwitchRow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.radium.inkwell.ui.components.ChapterListItem
+import com.radium.inkwell.ui.components.CardViewport
+import com.radium.inkwell.ui.components.ChipRow
+import com.radium.inkwell.ui.components.IconLabelButton
+import com.radium.inkwell.ui.components.cardMargin
+import com.radium.inkwell.ui.components.groupedCardItem
+import com.radium.inkwell.ui.components.settingsCardColor
+import com.radium.inkwell.ui.components.Dimens
+import com.radium.inkwell.ui.components.SectionHeader
+import com.radium.inkwell.ui.components.SettingGroupPosition
+import com.radium.inkwell.reader.api.FlipAnimation
+import com.radium.inkwell.reader.api.FlipDirection
+import com.radium.inkwell.reader.api.ReaderSettings
+import com.radium.inkwell.reader.api.ReaderTheme
+import com.radium.inkwell.reader.api.TapAction
+import com.radium.inkwell.reader.api.TapZones
+import com.radium.inkwell.reader.flip.FLIP_SLOP_DP
+import com.radium.inkwell.ui.theme.argbToHsv
+import com.radium.inkwell.ui.theme.hsvToArgb
+import com.radium.inkwell.ui.theme.hsvToColor
+import com.radium.inkwell.ui.components.AppColorSlider
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import com.radium.inkwell.ui.components.AppBottomSheet
+import com.radium.inkwell.ui.components.SegmentedChoice
+import com.radium.inkwell.ui.components.SearchField
+import com.radium.inkwell.ui.theme.AppShapes
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Check
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.ListView
+import top.yukonga.miuix.kmp.icon.extended.Pause
+import top.yukonga.miuix.kmp.icon.extended.Play
+import top.yukonga.miuix.kmp.icon.extended.Replace
+import top.yukonga.miuix.kmp.icon.extended.Tune
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.squircle.squircleBorder
+import top.yukonga.miuix.kmp.squircle.squircleSurface
+import com.radium.inkwell.ui.components.pageScroll
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.radium.inkwell.ui.components.sinkOnPress
+import com.radium.inkwell.ui.components.FastScroller
+import com.radium.inkwell.ui.components.animationsEnabled
+import com.radium.inkwell.data.prefs.AppPrefs
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.semantics.stateDescription
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
+import top.yukonga.miuix.kmp.icon.extended.ExpandLess
+import top.yukonga.miuix.kmp.icon.extended.ExpandMore
+import top.yukonga.miuix.kmp.icon.extended.Sort
+import top.yukonga.miuix.kmp.icon.extended.More
+
+@Composable
+fun ReaderMenu(
+    visible: Boolean,
+    session: ReaderSessionUi,
+    overlay: ReaderOverlayUi,
+    pageUi: ReaderPageUi,
+    toc: StateFlow<List<TocItem>>,
+    onExit: () -> Unit,
+    onGotoChapter: (Int) -> Unit,
+    onSeekPercent: (Float) -> Unit,
+    onUpdateSettings: (ReaderSettings) -> Unit,
+    onPreviewSettings: (ReaderSettings) -> Unit,
+    onCommitSettings: () -> Unit,
+    onSelectPaper: (String) -> Unit,
+    onCommitCustomPaper: () -> Unit,
+    onSetTextSelection: (Boolean) -> Unit,
+    typography: TypographyActions,
+    onSearchSources: () -> Unit,
+    onRefreshChapter: () -> Unit,
+    onToggleAutoFlip: () -> Unit,
+    onDismiss: () -> Unit,
+    onSwipePage: (FlipDirection) -> Unit,
+    onReaderSheetOpen: (Boolean) -> Unit,
+    /** 录着翻页区的图层（见 ReaderScreen）：菜单的几条栏对它取样做毛玻璃。null 时退回实色栏 */
+    pageBackdrop: LayerBackdrop? = null,
+) {
+    var showToc by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    var showMore by remember { mutableStateOf(false) }
+
+    // 菜单现在常驻组合（为了能播退场动画），所以关菜单时得把面板一起收掉 ——
+    // 否则下次呼出菜单，上回没关的目录会自己冒出来
+    LaunchedEffect(visible) {
+        if (!visible) {
+            showToc = false
+            showSettings = false
+            showMore = false
+        }
+    }
+    LaunchedEffect(showToc, showSettings) {
+        onReaderSheetOpen(showToc || showSettings)
+    }
+
+    // 菜单这一层靠**色阶 + 毛玻璃**跟纸面分开，不靠阴影和蒙层：
+    // - 从前顶栏、底栏与纸同色，只隔一根发丝线，看着像页面上下多了两行字，而不是盖上来的一层。
+    // - 也别回到投影 / 压暗：同色纸上 4~8dp 的投影就是一道脏灰线；压暗正文会把米色纸压成灰绿，
+    //   在顶栏底边裂出一道生硬的分界（两条都实测过）。纸书里书签和纸页之间也没有阴影。
+    // 两条栏都是比纸深（深色纸上是浅）一档的 HyperOS 毛玻璃（readerGlass）：对正文取样模糊、再叠八成的浮层色。
+    // 浮层底色与点「设置」弹出的面板同一个（见 readerOverlayColor）。
+    //
+    // **两条栏都通栏、不带圆角**（HyperOS 的玻璃栏就是这样）。从前顶栏朝正文一侧是大圆角，底部是两块悬浮的圆角条
+    // （进度、操作）四周露出纸色 —— 装上后被指出「图标外面套了个容器」：返回键、四个操作像是各装在一张卡片里；
+    // 再加上悬浮条、顶栏、设置面板、面板里的卡片各是一种圆角，「弹出层的圆角不统一」。
+    // 现在圆角只留给真正弹出来的那一层（目录、设置面板），两条常驻的栏是贴边的平条。
+    val scheme = MiuixTheme.colorScheme
+    val barColor = readerOverlayColor()
+    // 毛玻璃时栏自己不铺底（底由 readerGlass 画），否则实色把模糊整个盖住
+    val barFill = if (pageBackdrop != null) Color.Transparent else barColor
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+
+    // 菜单从前是硬出硬消（直接 if (visible) 组合/移除）。现在顶栏从上滑入、底栏从下滑入、
+    // 整层淡入 —— 让人看得出这是「盖上来的一层」，而不是页面突然换了个样子。
+    // 退场比入场快（帮手里退场取 fast* 档）：用户已经决定关掉了，界面还慢悠悠淡出会像没反应。
+    AnimatedVisibility(
+        visible = visible,
+        enter = scrimEnter(),
+        exit = scrimExit(),
+    ) {
+        val density = LocalDensity.current
+        val slopPx = with(density) { FLIP_SLOP_DP.dp.toPx() }
+        Box(Modifier.fillMaxSize()) {
+            // 底层：整块纸面，**透明**。点一下关菜单；按当前翻页方向滑一下 = 关并翻一页。
+            // 顶栏和底部面板挂了 blockTouchesBelow，落在它们身上的触摸到此为止，不会漏到这一层。
+            // 无涟漪：这是块半屏的空白。目录/设置/换源开着时不拦截，否则跟面板里的列表抢手势。
+            // visible 已是 false 时也不挂 —— 退场动画还在播若仍吃手势，关完会短暂翻不了页。
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .menuBodyGesture(
+                        enabled = visible &&
+                            !showToc &&
+                            !showSettings &&
+                            overlay.sourceCandidates == null,
+                        vertical = session.settings.flipAnimation == FlipAnimation.SCROLL,
+                        slopPx = slopPx,
+                        onTap = onDismiss,
+                        onFlip = onSwipePage,
+                    ),
+            )
+            Column(Modifier.fillMaxSize()) {
+                // 顶栏从上滑入，底部从下滑入 —— 用 animateEnterExit 而不是再套一层
+                // AnimatedVisibility：套进来的那层 visible 恒为 true，根本不会播。
+                Surface(
+                    color = barFill,
+                    contentColor = scheme.onSurface,
+                    modifier = Modifier
+                        .animateEnterExit(topBarEnter(), topBarExit())
+                        .readerGlass(pageBackdrop, RectangleShape, barColor)
+                        .blockTouchesBelow(),
+                ) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            // 与 App 的窄顶栏同高（AppToolbar），左右同样只留 gapXS（48dp 的图标按钮自带一圈可点区）
+                            .height(Dimens.toolbarHeight)
+                            .padding(horizontal = Dimens.gapXS),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // 与全应用的 BackButton 同一个箭头（Miuix 细线 Back），只是读屏名字不同；它不自动镜像，RTL 下自己翻
+                        AppIconButton(onClick = onExit) {
+                            Icon(
+                                MiuixIcons.Back,
+                                contentDescription = "退出阅读",
+                                modifier = if (rtl) Modifier.graphicsLayer { scaleX = -1f } else Modifier,
+                            )
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                session.bookTitle,
+                                style = MiuixTheme.textStyles.headline2,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                pageUi.chapterTitle,
+                                style = MiuixTheme.textStyles.footnote1,
+                                // 次要文字走纸张主题的摘要色（够 4.5:1），不再手写 0.65 透明度
+                                color = scheme.onSurfaceVariantSummary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (overlay.refreshingChapter || overlay.chapterRefreshFailed) {
+                                Text(
+                                    if (overlay.refreshingChapter) "正在重新获取本章…" else "获取失败，原内容已保留 · 更多中重试",
+                                    style = MiuixTheme.textStyles.footnote1,
+                                    color = scheme.onSurfaceVariantSummary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        if (session.isNetBook) {
+                            Box {
+                                AppIconButton(onClick = { showMore = true }) {
+                                    Icon(MiuixIcons.More, contentDescription = "更多阅读操作")
+                                }
+                                AppDropdownMenu(
+                                    expanded = showMore,
+                                    onDismissRequest = { showMore = false },
+                                    items = listOf(
+                                        AppMenuItem(
+                                            text = when {
+                                                overlay.refreshingChapter -> "正在重新获取本章…"
+                                                overlay.chapterRefreshFailed -> "重试获取本章"
+                                                else -> "重新获取本章"
+                                            },
+                                            summary = "从当前书源获取最新内容",
+                                            enabled = !overlay.refreshingChapter && !overlay.changingSource &&
+                                                !overlay.autoChanging && !pageUi.loading && pageUi.page != null,
+                                            onClick = onRefreshChapter,
+                                        ),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                // 底栏：一条通栏，进度在上、四个操作在下，一直铺到屏幕底（手势条那一截也是玻璃）
+                Surface(
+                    color = barFill,
+                    contentColor = scheme.onSurface,
+                    modifier = Modifier
+                        .animateEnterExit(bottomBarEnter(), bottomBarExit())
+                        .fillMaxWidth()
+                        .readerGlass(pageBackdrop, RectangleShape, barColor)
+                        .blockTouchesBelow(),
+                ) {
+                    Column(
+                        Modifier
+                            .navigationBarsPadding()
+                            .padding(horizontal = Dimens.gapS, vertical = Dimens.gapXS),
+                    ) {
+                        ChapterProgress(
+                            pageUi = pageUi,
+                            chapterCount = session.chapterCount,
+                            onGotoChapter = onGotoChapter,
+                            onSeekPercent = onSeekPercent,
+                        )
+                        MenuActions(
+                            session = session,
+                            overlay = overlay,
+                            onShowToc = { showToc = true },
+                            onSearchSources = onSearchSources,
+                            onToggleAutoFlip = onToggleAutoFlip,
+                            onShowSettings = { showSettings = true },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showToc) {
+        val tocItems by toc.collectAsStateWithLifecycle()
+        // 正序 / 倒序记在本机（见 AppPrefs.tocReversedState），下次打开还是那个顺序
+        val appPrefs = koinInject<AppPrefs>()
+        val reversed = appPrefs.tocReversedState.collectAsStateWithLifecycle().value ?: false
+        val prefsScope = rememberCoroutineScope()
+        // 面板底是浮层色（AppBottomSheet 默认的 background），章节行是卡片色，两者差一档。
+        // 目录会滚到手势条下面：导航栏高度垫在列表末尾（见 TocList），不让面板在外面垫
+        AppBottomSheet(
+            onDismissRequest = { showToc = false },
+            padNavigationBar = false,
+            title = "目录",
+            endAction = {
+                TocOrderButton(
+                    reversed = reversed,
+                    onToggle = { prefsScope.launch { appPrefs.setTocReversed(!reversed) } },
+                )
+            },
+        ) {
+            TocList(
+                toc = tocItems,
+                current = pageUi.chapterIndex,
+                // 本地书正文一直在，缓存指示对它没有意义（isCached 恒为 false，
+                // 显示出来只会让每一章都像"没预加载"）
+                showCacheState = session.isNetBook,
+                reversed = reversed,
+                // 目录跳章后收起整个菜单；上一章/下一章则留着菜单，方便连着翻。
+                // 跳章不等面板的退场动画（dismiss { }）：那会让翻到目标章晚上三百毫秒，像点了没反应
+                onSelect = { showToc = false; onGotoChapter(it); onDismiss() },
+            )
+        }
+    }
+
+    if (showSettings) {
+        // 不压暗正文：面板只占半屏，上面露出来的正文就是排版的实时预览；隔着一层黑看，行距字距勉强看得出，
+        // 纸色和亮度根本没法判断。底与菜单的浮层同色（readerOverlayColor，与纸面差一档 —— 同色的话面板上沿等于不存在）。
+        // 导航栏高度由面板内容自己垫在滚动末尾（见 TypographyPanel），这里不垫。
+        //
+        // 手上正拖着哪条滑轨提到这一层：面板底色、拖动条都跟着它变。
+        // 拖着字号 / 亮度时面板让开 —— 底色和拖动条淡掉，只剩手上那一条（见 TypographyPanel）。
+        // 二级页的标题行（‹ 和页名）不用面板自己的那一行：它得跟着页面一起滑进来（见 SheetPages）
+        var page by remember { mutableStateOf(SettingsPage.Main) }
+        var dragging by remember { mutableStateOf<SettingsSlider?>(null) }
+        val effects = AppTheme.motionScheme.defaultEffectsSpec<Color>()
+        val overlayColor = readerOverlayColor()
+        val handleColor = BottomSheetDefaults.dragHandleColor()
+        val sheetColor by animateColorAsState(
+            if (dragging != null) overlayColor.copy(alpha = 0f) else overlayColor,
+            effects,
+            label = "settingsSheet",
+        )
+        val sheetHandle by animateColorAsState(
+            if (dragging != null) handleColor.copy(alpha = 0f) else handleColor,
+            effects,
+            label = "settingsHandle",
+        )
+        AppBottomSheet(
+            onDismissRequest = { showSettings = false },
+            backgroundColor = sheetColor,
+            padNavigationBar = false,
+            enableWindowDim = false,
+            dragHandleColor = sheetHandle,
+        ) {
+            TypographyPanel(
+                page = page,
+                onOpen = { page = it },
+                dragging = dragging,
+                onDragging = { dragging = it },
+                settings = session.settings,
+                isNetBook = session.isNetBook,
+                onUpdate = onUpdateSettings,
+                onPreview = onPreviewSettings,
+                onCommit = onCommitSettings,
+                onSelectPaper = onSelectPaper,
+                onCommitCustomPaper = onCommitCustomPaper,
+                textSelectionEnabled = session.textSelectionEnabled,
+                onTextSelectionChange = onSetTextSelection,
+                typography = typography,
+            )
+        }
+    }
+
+}
+
+/**
+ * 底栏「上一章 / 下一章」。不用按钮：按钮自带底色与最小高度，夹在滑块两边像两张小卡片，
+ * 整行高度被它们钉死。文字链 + [Dimens.touchTarget] 保触控，视觉跟轨对齐。
+ */
+@Composable
+private fun ChapterTextAction(
+    label: String,
+    enabled: Boolean,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        style = MiuixTheme.textStyles.body2,
+        fontWeight = FontWeight.Medium,
+        color = if (enabled) color else color.copy(alpha = 0.38f),
+        modifier = Modifier
+            .heightIn(min = Dimens.touchTarget)
+            .clickable(
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .padding(horizontal = Dimens.gapXS)
+            .wrapContentHeight(align = Alignment.CenterVertically),
+    )
+}
+
+/**
+ * 章节进度：上一章 / 细轨滑块 / 下一章，下面一行「本章第几页 · 全书百分比」。
+ *
+ * 从前只有一根轨：看不出读到这一章的哪儿、全书的哪儿；拖的时候也没有数字，松手前不知道会落在哪一页。
+ * 拖动是实时跳页的（见 ReaderViewModel.seekToPercent），这行字跟着页码一起变。
+ *
+ * 不写「第几章」：那是目录里的序号，书源目录里混着公告、卷名时，跟章节标题自己的编号对不上 ——
+ * 标题写着第 2383 章，这里却说第 2395 章。全书百分比与页脚同一个算法（[bookProgressPercent]）。
+ */
+@Composable
+private fun ChapterProgress(
+    pageUi: ReaderPageUi,
+    chapterCount: Int,
+    onGotoChapter: (Int) -> Unit,
+    onSeekPercent: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MiuixTheme.colorScheme
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ChapterTextAction(
+                label = "上一章",
+                enabled = pageUi.chapterIndex > 0,
+                color = scheme.onSurface,
+                onClick = { onGotoChapter(pageUi.chapterIndex - 1) },
+            )
+            AppSlider(
+                value = if (pageUi.pageCount <= 1) 0f
+                else pageUi.pageInChapter.toFloat() / (pageUi.pageCount - 1),
+                onValueChange = onSeekPercent,
+                label = "章内进度",
+                enabled = pageUi.pageCount > 1,
+                activeColor = scheme.primary,
+                // 夹在两行字之间，用矮一档的轨：默认 28dp 的胶囊在这条细长的悬浮条里太抢
+                height = Dimens.sliderCompact,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = Dimens.gapS),
+            )
+            ChapterTextAction(
+                label = "下一章",
+                enabled = pageUi.chapterIndex + 1 < chapterCount,
+                color = scheme.onSurface,
+                onClick = { onGotoChapter(pageUi.chapterIndex + 1) },
+            )
+        }
+        Text(
+            progressLabel(pageUi, chapterCount),
+            style = MiuixTheme.textStyles.footnote1,
+            color = scheme.onSurfaceVariantSummary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = Dimens.gapXS),
+        )
+    }
+}
+
+private fun progressLabel(page: ReaderPageUi, chapterCount: Int): String = buildString {
+    if (page.pageCount > 0) append("本章 ${page.pageInChapter + 1} / ${page.pageCount} 页 · ")
+    append("全书 ${"%.1f".format(bookProgressPercent(page, chapterCount))}%")
+}
+
+/**
+ * 底部操作条。图标配上文字：从前是四个光秃秃的图标，新用户得挨个点了才知道是什么。
+ *
+ * 四个动作同一种样式（图标在上、字在下）、平分宽度。曾把「设置」做成实心主按钮突出它，可那是
+ * 图标在左、字在右的另一种排法，一排四个里只有它横着，看着像拼错了 —— 宁可四个一样。
+ * 本地书 / 滚动模式下不适用的动作保留占位并禁用，位置不跳。
+ */
+@Composable
+private fun MenuActions(
+    session: ReaderSessionUi,
+    overlay: ReaderOverlayUi,
+    onShowToc: () -> Unit,
+    onSearchSources: () -> Unit,
+    onToggleAutoFlip: () -> Unit,
+    onShowSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        BarAction(
+            icon = MiuixIcons.ListView,
+            label = "目录",
+            onClick = { UsageLog.event("ui.click", "action" to "reader.toc"); onShowToc() },
+            modifier = Modifier.weight(1f),
+        )
+        BarAction(
+            icon = MiuixIcons.Replace,
+            label = "换源",
+            onClick = { UsageLog.event("ui.click", "action" to "reader.source"); onSearchSources() },
+            enabled = session.isNetBook,
+            modifier = Modifier.weight(1f),
+        )
+        BarAction(
+            icon = if (overlay.autoFlipping) MiuixIcons.Pause else MiuixIcons.Play,
+            label = if (overlay.autoFlipping) "停止翻页" else "自动翻页",
+            onClick = { UsageLog.event("ui.click", "action" to "reader.auto_flip"); onToggleAutoFlip() },
+            enabled = session.settings.flipAnimation != FlipAnimation.SCROLL,
+            modifier = Modifier.weight(1f),
+        )
+        BarAction(
+            icon = MiuixIcons.Tune,
+            label = "设置",
+            onClick = { UsageLog.event("ui.click", "action" to "reader.settings"); onShowSettings() },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/**
+ * 操作条上的一个动作：图标在上、字在下（[IconLabelButton]，多选态的底部操作条也是它）。四格均分整条宽，左右不再加内边距。
+ *
+ * 四个图标都取 Miuix 图标集（目录 ListView、换源 Replace、自动翻页 Play/Pause、设置 Tune）：
+ * 同一排里混两套线宽一眼就看得出，所以要换就整排一起换。
+ */
+@Composable
+private fun BarAction(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    IconLabelButton(
+        icon = icon,
+        label = label,
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        contentPadding = PaddingValues(vertical = Dimens.gapXS),
+    )
+}
+
+/**
+ * 目录面板：搜索框、一行概况、章节卡，叠着快速滚动条和「定位当前章」。
+ *
+ * - **一行概况**：共多少章；网络书再加「● 已缓存多少章」—— 顺手把行尾那颗点讲明白（从前没有任何地方说它是什么）。
+ *   搜索时换成「找到多少章」。
+ * - **章节行**（[ChapterListItem]）：读过的字变灰、在读那章淡强调底 + 「在读」，没读的照常。
+ * - **正序 / 倒序**（[reversed]，标题行右边的按钮切）：追连载的人倒过来看，最新章在最上面。
+ * - **快速滚动条**（[FastScroller]）：上百章才出现，拖着走，气泡写章名和全书位置。
+ * - **定位当前章**：在读那章滚出视野时底部浮出一颗胶囊（和详情页那个按钮同名），箭头指它在上面还是下面。
+ *
+ * 位置：打开时在读那章停在第四行左右（上面露三章，看得出前后）；换顺序回到顶上（倒序就是为了看最新几章）；
+ * 搜索从第一条结果看起，清空搜索回到在读那章。
+ */
+@Composable
+private fun TocList(
+    toc: List<TocItem>,
+    current: Int,
+    showCacheState: Boolean,
+    reversed: Boolean,
+    onSelect: (Int) -> Unit,
+) {
+    val listState = rememberLazyListState()
+    var query by remember { mutableStateOf("") }
+    val q = query.trim()
+    val ordered = remember(toc, reversed) { if (reversed) toc.asReversed() else toc }
+    val shown = remember(ordered, q) {
+        if (q.isEmpty()) ordered else ordered.filter { it.title.contains(q, ignoreCase = true) }
+    }
+    val cachedCount = remember(toc) { toc.count { it.cached } }
+    // 在读那章在当前列表里的第几行；不在（搜索没搜到它）是 -1
+    val currentPos = remember(shown, current) { shown.indexOfFirst { it.index == current } }
+    val animate = animationsEnabled()
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        if (currentPos > TOC_ROWS_ABOVE_CURRENT) listState.scrollToItem(currentPos - TOC_ROWS_ABOVE_CURRENT)
+    }
+    var lastOrder by remember { mutableStateOf(reversed to q) }
+    LaunchedEffect(reversed, q) {
+        val order = reversed to q
+        if (order == lastOrder) return@LaunchedEffect
+        val reordered = order.first != lastOrder.first
+        lastOrder = order
+        listState.scrollToItem(
+            if (!reordered && q.isEmpty()) (currentPos - TOC_ROWS_ABOVE_CURRENT).coerceAtLeast(0) else 0,
+        )
+    }
+
+    Column {
+        // SearchField 默认的底是 surfaceContainerHigh（「页面上的搜索栏」那一档）；浅色纸上浮层恰好也是这一档，
+        // 框会整个隐身。这里换成面板里的卡片色 —— 搜索框与下面的目录卡同一层，浅纸深纸都浮得起来。
+        // 左右与目录卡对齐（面板里的卡离两边 cardMargin）
+        SearchField(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = "搜索章节",
+            containerColor = settingsCardColor(),
+            modifier = Modifier.padding(horizontal = cardMargin(), vertical = Dimens.gapXS),
+        )
+        TocSummary(
+            text = if (q.isEmpty()) "共 ${toc.size} 章" else "找到 ${shown.size} 章",
+            cachedCount = if (showCacheState && q.isEmpty()) cachedCount else null,
+        )
+        if (shown.isEmpty()) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = Dimens.gapXXL, bottom = Dimens.gapXXL + sheetBottomInset()),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    if (q.isEmpty()) "还没有章节" else "没有匹配的章节",
+                    style = MiuixTheme.textStyles.body1,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            }
+        } else {
+            // 导航栏高度垫在列表末尾、也加进高度上限：列表一直铺到屏幕底、滚到手势条下面，看得见的条数不变。
+            // 章节拼成一张卡（同详情页的目录），不再一章一张小卡、行间留缝
+            val bottomInset = sheetBottomInset()
+            val listPadding = PaddingValues(bottom = bottomInset)
+            val cachedDot = MiuixTheme.colorScheme.primary
+            val readDot = MiuixTheme.colorScheme.onSurfaceVariantSummary
+            Box(
+                Modifier
+                    .heightIn(max = Dimens.sheetListMaxHeight + bottomInset)
+                    // 和概况行之间的缝垫在视口外面：从前在列表的 contentPadding.top 里，一滚就跟着内容滚走，
+                    // 章名直接顶到「共 N 章」底下。先限高再垫，整块的高度上限不变，面板不因此变高
+                    .padding(top = Dimens.gapS),
+            ) {
+                // 视口裁成卡的圆上角：一滚，顶上切过的是中间的行，不裁的话卡顶是一刀直线（见 CardViewport）。
+                // 快速滚动条和「定位当前章」留在视口外面，别被裁掉
+                CardViewport {
+                    LazyColumn(
+                        state = listState,
+                        // HyperOS 的回弹 + 到头轻震；主题自带的那份关掉，免得叠成双倍（见 pageScroll）
+                        modifier = Modifier.pageScroll(),
+                        contentPadding = listPadding,
+                        overscrollEffect = null,
+                    ) {
+                        itemsIndexed(shown, key = { _, it -> it.index }) { i, item ->
+                            val read = item.index < current
+                            ChapterListItem(
+                                title = item.title,
+                                selected = item.index == current,
+                                read = read,
+                                highlight = q,
+                                onClick = { onSelect(item.index) },
+                                modifier = Modifier.groupedCardItem(i, shown.size),
+                                trailingContent = if (showCacheState && item.cached) {
+                                    {
+                                        // 有点=正文已缓存，翻到它不用等网络。没点的章节才是"翻过去要现抓"的，
+                                        // 也就是可能卡住的那些 —— 这正是预加载到底跑到哪了的唯一可见线索。
+                                        // 读过的那几章点也跟着字淡一档
+                                        Box(
+                                            Modifier
+                                                .size(Dimens.gapS)
+                                                .semantics { contentDescription = "已缓存" }
+                                                .background(if (read) readDot else cachedDot, CircleShape),
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
+                            )
+                        }
+                    }
+                }
+                FastScroller(
+                    state = listState,
+                    itemCount = shown.size,
+                    label = { shown.getOrNull(it)?.title.orEmpty() },
+                    detail = { row ->
+                        val index = shown.getOrNull(row)?.index ?: 0
+                        "全书 ${(index + 1) * 100 / toc.size.coerceAtLeast(1)}%"
+                    },
+                    contentPadding = listPadding,
+                    modifier = Modifier.matchParentSize(),
+                )
+                if (q.isEmpty() && currentPos >= 0) {
+                    CurrentChapterPill(
+                        listState = listState,
+                        currentPos = currentPos,
+                        onClick = {
+                            scope.launch {
+                                val target = (currentPos - TOC_ROWS_ABOVE_CURRENT).coerceAtLeast(0)
+                                if (animate) listState.animateScrollToItem(target) else listState.scrollToItem(target)
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = bottomInset + Dimens.gapM),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** 目录上方的一行概况。左边与卡里的章名对齐 */
+@Composable
+private fun TocSummary(text: String, cachedCount: Int?) {
+    val summary = MiuixTheme.colorScheme.onSurfaceVariantSummary
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = cardMargin() + Dimens.listHorizontal)
+            .padding(top = Dimens.gapS)
+            .semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, style = MiuixTheme.textStyles.footnote1, color = summary)
+        if (cachedCount != null) {
+            Text(" · ", style = MiuixTheme.textStyles.footnote1, color = summary)
+            // 和章节行尾那颗点同一个样子：概况里就把它是什么讲了
+            Box(
+                Modifier
+                    .padding(end = Dimens.gapXS)
+                    .size(Dimens.gapS)
+                    .background(MiuixTheme.colorScheme.primary, CircleShape),
+            )
+            Text("已缓存 $cachedCount 章", style = MiuixTheme.textStyles.footnote1, color = summary)
+        }
+    }
+}
+
+/**
+ * 「定位当前章」：在读那章滚出视野时浮出来。实心强调色胶囊（和阅读设置面板里实心的选中段同一种「强调」），
+ * 压在章节卡上也分得出来；箭头指在读那章在上面还是下面。高度保底触控下限。
+ */
+@Composable
+private fun CurrentChapterPill(
+    listState: LazyListState,
+    currentPos: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val offscreen by remember(listState, currentPos) {
+        derivedStateOf { listState.layoutInfo.visibleItemsInfo.none { it.index == currentPos } }
+    }
+    val above by remember(listState, currentPos) {
+        derivedStateOf { currentPos < listState.firstVisibleItemIndex }
+    }
+    AnimatedVisibility(
+        visible = offscreen,
+        modifier = modifier,
+        enter = bottomBarEnter(),
+        exit = bottomBarExit(),
+    ) {
+        val scheme = MiuixTheme.colorScheme
+        Row(
+            Modifier
+                .heightIn(min = Dimens.touchTarget)
+                .squircleSurface(scheme.primary, Dimens.touchTarget / 2)
+                .clickable(role = Role.Button, onClick = onClick)
+                .padding(horizontal = Dimens.gapL),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Dimens.gapXS),
+        ) {
+            Icon(
+                if (above) MiuixIcons.ExpandLess else MiuixIcons.ExpandMore,
+                contentDescription = null,
+                tint = scheme.onPrimary,
+                modifier = Modifier.size(Dimens.iconSm),
+            )
+            Text(
+                "定位当前章",
+                style = MiuixTheme.textStyles.body2,
+                fontWeight = FontWeight.Medium,
+                color = scheme.onPrimary,
+            )
+        }
+    }
+}
+
+/**
+ * 目录标题行右边的「正序 / 倒序」。倒序开着时图标换强调色，一眼看得出现在是倒着的；读屏念当前是哪种顺序。
+ */
+@Composable
+private fun TocOrderButton(reversed: Boolean, onToggle: () -> Unit) {
+    AppIconButton(
+        onClick = onToggle,
+        modifier = Modifier.semantics { stateDescription = if (reversed) "倒序" else "正序" },
+        contentColor = if (reversed) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
+    ) {
+        Icon(MiuixIcons.Sort, contentDescription = "切换目录顺序")
+    }
+}
+
+/** 定位到在读那章时，它上面留几章：看得出前后是哪几章 */
+private const val TOC_ROWS_ABOVE_CURRENT = 3
+
+// ---------- 阅读设置面板 ----------
+
+private val LINE_SPACING_OPTIONS = listOf(
+    "紧凑" to 1.4f,
+    "标准" to 1.6f,
+    "宽松" to 1.9f,
+)
+
+/** 段与段之间的空（em，按正文字号算）。0 = 段落之间只靠首行缩进区分 */
+private val PARA_SPACING_OPTIONS = listOf(
+    "无" to 0f,
+    "紧凑" to 0.3f,
+    "标准" to 0.6f,
+    "宽松" to 1.0f,
+)
+
+/** 首行缩进（字）。有的书正文自带全角空格缩进，再叠两字就成了四字 —— 给个「无」让人关掉 */
+private val INDENT_OPTIONS = listOf(
+    "无" to 0f,
+    "1 字" to 1f,
+    "2 字" to 2f,
+)
+
+/** 章节标题相对正文的倍数。1.0 = 与正文同大（有人不喜欢标题占地方） */
+private val TITLE_SCALE_OPTIONS = listOf(
+    "小" to 1.0f,
+    "标准" to 1.4f,
+    "大" to 1.8f,
+)
+
+/** 章节标题上方留白（dp）。0 = 标题直接贴着正文顶 */
+private val TITLE_TOP_OPTIONS = listOf(
+    "无" to 0f,
+    "小" to 12f,
+    "标准" to 24f,
+    "大" to 48f,
+)
+
+/**
+ * 阅读设置面板：一级页 + 三个二级页（排版 / 翻页 / 更多），**全在这一个面板里**。
+ *
+ * - **一级页**放最常调、要边看边调的：亮度、字号、行距、纸张、字体，一屏放下；底下三个入口进二级页（见 [MainPage]）。
+ *   从前是四个页签：页签只是把设置分成四堆，最常调的和一年调一次的都得先挑对页签；「排版」「版式」两个近义词更是猜不出哪页放什么。
+ * - **二级页**整页从右推进来（[SheetPages]，和整页转场同一套几何，侧滑返回跟手），第一行是它自己的标题行：
+ *   左边 ‹ 返回、中间页名（[SheetPageHeader]），系统返回键也是先回一级。
+ *   二级页还在这个面板里、正文照样露在上面 —— 段距、边距这些细节也是边调边看，不用进单独的设置页。
+ * - **面板定高**：各页铺满同一个定高的容器，二级页 = 标题行 + 内容，进出二级页面板总高不变、不跳。
+ * - **拖滑块时面板让开**（[dragging]）：手按在字号或亮度滑轨上拖起来，面板底色、拖动条和别的设置项一起淡掉，
+ *   只剩手上那一条浮在原位，整屏正文都是预览；松手回来。HyperOS 控制中心拖亮度就是这样。
+ *
+ * 层次靠三档色阶拉开（见 ReaderThemeScope）：面板本身与纸面差一档（[readerOverlayColor]），
+ * 设置项收进分组卡（[ReaderGroup]，[readerCardColor]），卡里的分段按钮未选中再差一档、选中的实心填强调色。
+ *
+ * **只占半屏、不压暗正文**：调排版要看得见效果。从前面板固定 560dp 高、底下还压着一层黑，
+ * 改行距字距时正文被盖住大半，纸色和亮度隔着蒙层更是没法判断。现在上面露出来的正文就是实时预览。
+ */
+@Composable
+private fun TypographyPanel(
+    page: SettingsPage,
+    onOpen: (SettingsPage) -> Unit,
+    dragging: SettingsSlider?,
+    onDragging: (SettingsSlider?) -> Unit,
+    settings: ReaderSettings,
+    isNetBook: Boolean,
+    onUpdate: (ReaderSettings) -> Unit,
+    onPreview: (ReaderSettings) -> Unit,
+    onCommit: () -> Unit,
+    onSelectPaper: (String) -> Unit,
+    onCommitCustomPaper: () -> Unit,
+    textSelectionEnabled: Boolean,
+    onTextSelectionChange: (Boolean) -> Unit,
+    typography: TypographyActions,
+) {
+    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    // 内容区定高（别用 heightIn(max)：那只是上限，内容矮时面板跟着缩，切到长的那页又被顶起来）。
+    // 按窗口比例取、大屏封顶，再加回从前页签占的那一行（一级页正好一屏放下）；二级页的标题行从这里面出
+    val pageHeight = (windowHeight * PANEL_HEIGHT_FRACTION).coerceAtMost(Dimens.sheetListMaxHeight) + Dimens.touchTarget
+    val back = { onOpen(SettingsPage.Main) }
+
+    // 返回键 / 侧滑在二级页上先回一级（SheetPages 里挂着处理者），一级页上不拦，返回照旧收起面板
+    SheetPages(
+        page = page,
+        root = SettingsPage.Main,
+        onBack = back,
+        background = readerOverlayColor(),
+        modifier = Modifier
+            .fillMaxWidth()
+            // 导航栏高度加进定高、也垫在滚动内容末尾：面板铺到屏幕底、设置项滚到手势条下面，看得见的高度不变
+            .height(pageHeight + sheetBottomInset()),
+    ) { current ->
+        Column(Modifier.fillMaxSize()) {
+            // 标题行不随内容滚：二级页滚到底也看得见 ‹
+            current.title?.let { SheetPageHeader(it, onBack = back) }
+            // 每页自己一个滚动状态：进出二级页都从顶上开始，不会落在上一页滚到的半截
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .pageScroll()
+                    .verticalScroll(rememberScrollState(), overscrollEffect = null)
+                    .padding(horizontal = cardMargin())
+                    // 二级页标题行与第一张卡之间的空，同从前 Miuix 标题行底下那一段
+                    .padding(top = if (current.title != null) Dimens.gapM else 0.dp)
+                    .padding(bottom = Dimens.gapXXL + sheetBottomInset()),
+                // 一级页要一屏放下，卡与卡之间收紧一档
+                verticalArrangement = Arrangement.spacedBy(if (current == SettingsPage.Main) Dimens.gapM else Dimens.gapL),
+            ) {
+                when (current) {
+                    SettingsPage.Main -> MainPage(
+                        settings = settings,
+                        onUpdate = onUpdate,
+                        onPreview = onPreview,
+                        onCommit = onCommit,
+                        onSelectPaper = onSelectPaper,
+                        onCommitCustomPaper = onCommitCustomPaper,
+                        typography = typography,
+                        dragging = dragging,
+                        onDragging = onDragging,
+                        onOpen = onOpen,
+                    )
+                    SettingsPage.Typeset -> {
+                        LayoutSchemeSection(settings, typography)
+                        TypesetTab(settings, onUpdate, typography.onAdjust)
+                    }
+                    SettingsPage.Flip -> FlipTab(settings, onUpdate)
+                    SettingsPage.More -> MoreTab(settings, isNetBook, onUpdate, textSelectionEnabled, onTextSelectionChange)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 设置面板里的一张分组卡：标题在卡外，用次要文字色（不跟选中态抢强调色）；内容在卡里（底色见 [readerCardColor]）。
+ * 卡内的行自己带左右内缩（[ReaderRow] / [ReaderBlock] / 分组 [SwitchRow] 都是 listHorizontal），
+ * 卡本身只给上下一点留白。
+ *
+ * @param trailing 标题行尾的文字按钮（字体的「导入」、排版方案的「存为方案」）。动作放这儿，卡里只剩选项：
+ *   从前「导入字体」是 chip 条末尾的一个 chip，和「默认」「衬线」长得一模一样，看着像一款叫「导入字体」的字。
+ *   有它时标题行垫到触控高度（同 SectionHeader），按钮的字右边对齐卡里的字
+ * @param color 卡片底色。只有一级页会换：拖着字号 / 亮度时卡片淡掉（见 [MainPage]）
+ */
+@Composable
+internal fun ReaderGroup(
+    title: String? = null,
+    trailing: (@Composable RowScope.() -> Unit)? = null,
+    color: Color = readerCardColor(),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column {
+        if (title != null) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = Dimens.listHorizontal,
+                        end = if (trailing != null) Dimens.listHorizontal - Dimens.gapM else Dimens.listHorizontal,
+                        bottom = if (trailing != null) 0.dp else Dimens.gapS,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    title,
+                    style = MiuixTheme.textStyles.body2,
+                    fontWeight = FontWeight.Medium,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { heading() },
+                )
+                trailing?.invoke(this)
+            }
+        }
+        // Miuix 的卡片（squircle 圆角，和面板、按钮、分段同一种弯法）。从前是 clip(RoundedCornerShape)，
+        // 普通圆弧夹在一堆 squircle 中间，几种圆角放一起就显得不统一
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            cornerRadius = AppShapes.radiusLarge,
+            insideMargin = PaddingValues(vertical = Dimens.gapXS),
+            colors = CardDefaults.defaultColors(color = color),
+            content = content,
+        )
+    }
+}
+
+/**
+ * 卡里一行：标签在左、控件在右；放不下就退成标签在上、控件在下。
+ *
+ * 从前每一项都是「一行小标题 + 一排 chip」上下摞着：高度翻倍，眼睛还得在标题和选项之间来回跳。
+ * 放不放得下按 [slots] 估 —— 控件要几个触控目标宽，再按系统字号放大；大字号、窄屏时宁可摞起来，
+ * 也不把分段按钮挤到文字截断。标签列定宽，同一张卡里各行的控件左边对齐。
+ */
+@Composable
+private fun ReaderRow(
+    label: String,
+    slots: Int,
+    content: @Composable () -> Unit,
+) {
+    BoxWithConstraints(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.listHorizontal, vertical = Dimens.gapS),
+    ) {
+        val fontScale = LocalDensity.current.fontScale
+        val labelWidth = Dimens.settingLabelWidth * fontScale
+        val labelText: @Composable (Modifier) -> Unit = { m ->
+            Text(label, style = MiuixTheme.textStyles.body2, modifier = m)
+        }
+        if (maxWidth >= labelWidth + Dimens.touchTarget * slots * fontScale) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                labelText(Modifier.width(labelWidth))
+                Box(Modifier.weight(1f)) { content() }
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.gapS)) {
+                labelText(Modifier)
+                content()
+            }
+        }
+    }
+}
+
+/** 卡里没有标签的一整块（chip 条、九宫格、色板），左右与 [ReaderRow] 同一个内缩 */
+@Composable
+private fun ReaderBlock(content: @Composable () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.listHorizontal, vertical = Dimens.gapS),
+    ) { content() }
+}
+
+/** 几档里选一档：标签 + 分段按钮。档位值是浮点，按 [tolerance] 认当前在哪一档 */
+@Composable
+private fun SegmentRow(
+    label: String,
+    options: List<Pair<String, Float>>,
+    value: Float,
+    tolerance: Float,
+    onSelect: (Float) -> Unit,
+) {
+    ReaderRow(label, slots = options.size) {
+        SegmentedChoice(
+            options = options.map { it.first },
+            selectedIndex = options.indexOfFirst { kotlin.math.abs(it.second - value) < tolerance },
+            onSelect = { onSelect(options[it].second) },
+        )
+    }
+}
+
+/**
+ * 一级页：最常调、要边看边调的五样 + 进二级页的三个入口，一屏放下。
+ *
+ * - 第一张卡：亮度、字号两条**拉满宽的滑轨**（[BrightnessRow]、[FontSizeRow]）+ 行距。
+ * - 第二张卡：纸张色板 + 字体条，都是一点就换（字体条见 [FontSection]）。
+ * - 入口：排版 › 翻页 › 更多 ›（[PageLinks]）。
+ *
+ * [dragging] 不为 null（手正拖着某条滑轨）时，别的一概淡掉、卡片底色也淡掉，只有那一行自己铺一块卡片底、浮在原位。
+ * [onPreview] / [onCommit]：连续拖动的滑块拖着时只预览、松手才落库（见 ReaderViewModel.previewSettings）；点一下就定的项走 [onUpdate]。
+ */
+@Composable
+private fun MainPage(
+    settings: ReaderSettings,
+    onUpdate: (ReaderSettings) -> Unit,
+    onPreview: (ReaderSettings) -> Unit,
+    onCommit: () -> Unit,
+    onSelectPaper: (String) -> Unit,
+    onCommitCustomPaper: () -> Unit,
+    typography: TypographyActions,
+    dragging: SettingsSlider?,
+    onDragging: (SettingsSlider?) -> Unit,
+    onOpen: (SettingsPage) -> Unit,
+) {
+    // 1 = 面板照常；0 = 让开，只剩手上那条滑轨
+    val shown by animateFloatAsState(
+        if (dragging == null) 1f else 0f,
+        AppTheme.motionScheme.defaultEffectsSpec(),
+        label = "settingsShown",
+    )
+    // 松手后 dragging 立刻变回 null，面板却还在淡回来：留住刚才拖的是哪一条，淡回来的这段它别跟着闪没
+    var active by remember { mutableStateOf<SettingsSlider?>(null) }
+    if (dragging != null && active != dragging) active = dragging
+    val card = readerCardColor()
+    // 卡片淡掉了，拖着的那一行自己铺一块卡片底（与卡片的淡出此消彼长，看着是这一行从卡里浮出来）；别的行跟着淡掉
+    val floatingRow = Modifier.squircleBackground(card.copy(alpha = card.alpha * (1f - shown)), AppShapes.radiusLarge)
+    val fadingRow = Modifier.alpha(shown)
+    fun rowModifier(kind: SettingsSlider): Modifier = if (active == kind) floatingRow else fadingRow
+
+    ReaderGroup(color = card.copy(alpha = card.alpha * shown)) {
+        BrightnessRow(
+            settings = settings,
+            onUpdate = onUpdate,
+            onPreview = onPreview,
+            onCommit = onCommit,
+            onDragging = { onDragging(if (it) SettingsSlider.Brightness else null) },
+            modifier = rowModifier(SettingsSlider.Brightness),
+        )
+        FontSizeRow(
+            settings = settings,
+            onAdjust = typography.onAdjust,
+            onPreview = onPreview,
+            onCommit = onCommit,
+            onDragging = { onDragging(if (it) SettingsSlider.FontSize else null) },
+            modifier = rowModifier(SettingsSlider.FontSize),
+        )
+        Box(Modifier.alpha(shown)) {
+            SegmentRow("行距", LINE_SPACING_OPTIONS, settings.lineSpacingMult, 0.001f) {
+                typography.onAdjust { copy(lineSpacingMult = it) }
+            }
+        }
+    }
+
+    // 纸张和字体同一张卡：都是「点一下就换、当场看效果」的，不用两个小标题各占一行
+    Box(Modifier.alpha(shown)) {
+        ReaderGroup {
+            Column(Modifier.padding(vertical = Dimens.gapS)) {
+                ThemeSwatches(settings, onSelectPaper, horizontalPadding = Dimens.listHorizontal)
+                // 选中自定义才展开调色 —— 平时它是一整块滑块，占掉半个面板
+                if (settings.theme.id == ReaderTheme.CUSTOM_ID) {
+                    Column(Modifier.padding(horizontal = Dimens.listHorizontal)) {
+                        CustomPaperEditor(
+                            theme = settings.theme,
+                            onChange = { onPreview(settings.copy(theme = it)) },
+                            onChangeFinished = onCommitCustomPaper,
+                        )
+                    }
+                }
+                HorizontalDivider(Modifier.padding(horizontal = Dimens.listHorizontal, vertical = Dimens.gapXS))
+                FontSection(
+                    settings = settings,
+                    actions = typography,
+                    onSelect = { onUpdate(settings.copy(fontId = it)) },
+                )
+            }
+        }
+    }
+
+    PageLinks(onOpen = onOpen, modifier = Modifier.alpha(shown))
+}
+
+/**
+ * 亮度：小太阳 · 滑轨 · 大太阳 · 「系统」。
+ *
+ * - 两头的太阳就是标签（不再占一列 80dp 的「亮度」），滑轨因此拉满整行，同样一拖调得更细。图标只是标签，不可点。
+ * - 跟随系统时滑轨照样能拖，一拖就接管（「系统」自动熄掉）；从前跟随系统时滑轨是禁用的，得先点掉「系统」才拖得动，
+ *   而禁用的滑轨看着和能拖的差不多，拖了没反应。跟随系统时滑轨换成禁用色，表示它此刻不管事，
+ *   位置停在系统此刻的亮度上（[systemBrightnessLevel]）—— 一拖从那儿接手，不会先跳到一半亮度。
+ * - 再点「系统」切回手动时回到这次面板里最后拖到的位置。
+ */
+@Composable
+private fun BrightnessRow(
+    settings: ReaderSettings,
+    onUpdate: (ReaderSettings) -> Unit,
+    onPreview: (ReaderSettings) -> Unit,
+    onCommit: () -> Unit,
+    onDragging: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val following = settings.brightnessOverride == null
+    val systemLevel = remember { systemBrightnessLevel(context) ?: HALF_BRIGHTNESS }
+    var manual by remember { mutableFloatStateOf(settings.brightnessOverride ?: systemLevel) }
+    val scheme = MiuixTheme.colorScheme
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.listHorizontal, vertical = Dimens.gapXS),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.gapS),
+    ) {
+        Icon(Icons.Outlined.BrightnessLow, contentDescription = null, modifier = Modifier.size(Dimens.iconMd))
+        AppSlider(
+            value = settings.brightnessOverride ?: manual,
+            onValueChange = { v ->
+                manual = v.coerceIn(MIN_BRIGHTNESS, 1f)
+                onPreview(settings.copy(brightnessOverride = manual))
+            },
+            onValueChangeFinished = onCommit,
+            label = "亮度",
+            activeColor = if (following) scheme.disabledPrimarySlider else null,
+            inactiveColor = if (following) scheme.disabledSecondary else null,
+            modifier = Modifier
+                .weight(1f)
+                .reportDragging(onDragging),
+        )
+        Icon(Icons.Outlined.BrightnessHigh, contentDescription = null, modifier = Modifier.size(Dimens.iconMd))
+        AppFilterChip(
+            selected = following,
+            onClick = { onUpdate(settings.copy(brightnessOverride = if (following) manual else null)) },
+            label = "系统",
+            solidSelection = true,
+        )
+    }
+}
+
+/**
+ * 字号：小 A · 分档滑轨 · 大 A · 当前字号。
+ *
+ * 从 16 调到 24 一拖就到（每过一档轻震一下，旁边的数字跟着变），不用连点八下；要微调就点两头的 A，一次 ±1，
+ * 到头（[ReaderSettings.FONT_SIZE_MIN] / [ReaderSettings.FONT_SIZE_MAX]）的那一头变灰。
+ * 拖着时每过一档预览一次（正文重排一次），松手落盘 —— 和亮度滑轨一样不在拖动中写 DataStore。
+ * 「A」读屏只会念成「A」，两头补上说清用途的名字。
+ */
+@Composable
+private fun FontSizeRow(
+    settings: ReaderSettings,
+    onAdjust: (ReaderSettings.() -> ReaderSettings) -> Unit,
+    onPreview: (ReaderSettings) -> Unit,
+    onCommit: () -> Unit,
+    onDragging: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val size = settings.fontSizeSp
+    val min = ReaderSettings.FONT_SIZE_MIN
+    val max = ReaderSettings.FONT_SIZE_MAX
+    val step = ReaderSettings.FONT_SIZE_STEP
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.listHorizontal, vertical = Dimens.gapXS),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.gapS),
+    ) {
+        FontSizeEnd(
+            text = "A",
+            style = MiuixTheme.textStyles.footnote1,
+            description = "字号减小",
+            enabled = size > min,
+            onClick = { onAdjust { copy(fontSizeSp = (fontSizeSp - step).coerceAtLeast(min)) } },
+        )
+        AppSlider(
+            value = size,
+            valueRange = min..max,
+            steps = ((max - min) / step).toInt() - 1,
+            onValueChange = { v ->
+                val sp = (v / step).roundToInt() * step
+                if (sp != settings.fontSizeSp) onPreview(settings.copy(fontSizeSp = sp))
+            },
+            onValueChangeFinished = onCommit,
+            label = "字号",
+            hapticEffect = SliderDefaults.SliderHapticEffect.Step,
+            modifier = Modifier
+                .weight(1f)
+                .reportDragging(onDragging),
+        )
+        FontSizeEnd(
+            text = "A",
+            style = MiuixTheme.textStyles.title3,
+            description = "字号增大",
+            enabled = size < max,
+            onClick = { onAdjust { copy(fontSizeSp = (fontSizeSp + step).coerceAtMost(max)) } },
+        )
+        Text(
+            size.toString().removeSuffix(".0"),
+            style = MiuixTheme.textStyles.body1,
+            fontWeight = FontWeight.Medium,
+            // 数字已经由滑轨念过（读屏念滑轨的当前值），这里不再念一遍
+            modifier = Modifier.clearAndSetSemantics { },
+        )
+    }
+}
+
+/** 排版微调按钮：带读屏标签，并保留完整触控区域。 */
+@Composable
+private fun FontSizeEnd(
+    text: String,
+    style: TextStyle,
+    description: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val color = MiuixTheme.colorScheme.onSurface
+    Box(
+        Modifier
+            .size(Dimens.touchTarget)
+            .squircleClip(AppShapes.radiusMedium)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text,
+            style = style,
+            fontWeight = FontWeight.Medium,
+            color = if (enabled) color else color.copy(alpha = color.alpha * DISABLED_CONTENT_ALPHA),
+        )
+    }
+}
+
+/**
+ * 进二级页的三个入口：一排三块，各写着页名和 ›。和设置页「点了进下一层」的行同一个意思（行尾 ›），
+ * 只是并排成一行 —— 一级页要一屏放下，三行入口太占地方。
+ */
+@Composable
+private fun PageLinks(onOpen: (SettingsPage) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.gapS)) {
+        listOf(SettingsPage.Typeset, SettingsPage.Flip, SettingsPage.More).forEach { target ->
+            Row(
+                Modifier
+                    .weight(1f)
+                    .height(Dimens.touchTarget)
+                    .squircleSurface(readerCardColor(), AppShapes.radiusMedium)
+                    .clickable(role = Role.Button) { onOpen(target) },
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(target.title.orEmpty(), style = MiuixTheme.textStyles.body2)
+                Icon(
+                    MiuixIcons.Basic.ArrowRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(Dimens.iconSm),
+                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 手指按在这条滑轨上、**真拖起来**（过了 touch slop）时报 true，抬手报 false；只点一下不报 —— 点按不该让整个面板闪一下。
+ * 只在 Initial 阶段旁观、不消费，滑轨自己的拖动照常。被掐（面板收起）时也报一次 false，别把面板留在「让开」的样子。
+ */
+@Composable
+private fun Modifier.reportDragging(onDragging: (Boolean) -> Unit): Modifier {
+    val latest by rememberUpdatedState(onDragging)
+    return pointerInput(Unit) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            var dragging = false
+            try {
+                while (true) {
+                    val change = awaitPointerEvent(PointerEventPass.Initial).changes
+                        .firstOrNull { it.id == down.id } ?: break
+                    if (!change.pressed) break
+                    if (!dragging && (change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                        dragging = true
+                        latest(true)
+                    }
+                }
+            } finally {
+                if (dragging) latest(false)
+            }
+        }
+    }
+}
+
+/**
+ * 排版页（二级）：段距、字距、缩进、对齐，以及标题与边距。都是「调一次就很少再动」的细节，
+ * 从一级页挪出来，让一级页一屏就能放下字号、字体和纸色。排版方案在这页最上面（见 TypographyPanel）。
+ */
+@Composable
+private fun TypesetTab(
+    settings: ReaderSettings,
+    onUpdate: (ReaderSettings) -> Unit,
+    onAdjust: (ReaderSettings.() -> ReaderSettings) -> Unit,
+) {
+    ReaderGroup("排版微调", trailing = {
+        AppTextButton("恢复默认", onClick = {
+            onAdjust {
+                val defaults = ReaderSettings()
+                copy(
+                    fontSizeSp = defaults.fontSizeSp,
+                    bodyFontWeight = defaults.bodyFontWeight,
+                    lineSpacingMult = defaults.lineSpacingMult,
+                    letterSpacingEm = defaults.letterSpacingEm,
+                    headerTopSpacingDp = defaults.headerTopSpacingDp,
+                    marginVerticalDp = defaults.marginVerticalDp,
+                    marginHorizontalDp = defaults.marginHorizontalDp,
+                )
+            }
+        })
+    }) {
+        LayoutNumberRow(
+            "正文字号", settings, onAdjust, ReaderSettings::fontSizeSp,
+            ReaderSettings.FONT_SIZE_MIN..ReaderSettings.FONT_SIZE_MAX, ReaderSettings.FONT_SIZE_STEP, "sp", 1,
+        ) { copy(fontSizeSp = it) }
+
+        val fileFont = ReaderSettings.isFileFont(settings.fontId)
+        val weights = if (fileFont) {
+            listOf(ReaderSettings.FONT_WEIGHT_NORMAL, ReaderSettings.FONT_WEIGHT_BOLD)
+        } else {
+            ReaderSettings.BODY_FONT_WEIGHTS.sorted()
+        }
+        ReaderRow("正文字重", slots = weights.size) {
+            SegmentedChoice(
+                options = if (fileFont) listOf("常规", "偏粗") else listOf("偏细", "常规", "偏粗"),
+                selectedIndex = weights.indexOf(settings.bodyFontWeight).takeIf { it >= 0 }
+                    ?: weights.indexOf(ReaderSettings.FONT_WEIGHT_NORMAL),
+                onSelect = { index -> onAdjust { copy(bodyFontWeight = weights[index]) } },
+            )
+        }
+        LayoutNumberRow("行距", settings, onAdjust, ReaderSettings::lineSpacingMult, 1.2f..2.2f, 0.05f, "倍", 2) {
+            copy(lineSpacingMult = it)
+        }
+        LayoutNumberRow("字距", settings, onAdjust, ReaderSettings::letterSpacingEm, 0f..0.15f, 0.01f, "em", 2) {
+            copy(letterSpacingEm = it)
+        }
+        LayoutNumberRow("头部留白", settings, onAdjust, ReaderSettings::headerTopSpacingDp, 8f..48f, 1f, "dp") {
+            copy(headerTopSpacingDp = it)
+        }
+        LayoutNumberRow("下边距", settings, onAdjust, ReaderSettings::marginVerticalDp, 8f..48f, 1f, "dp") {
+            copy(marginVerticalDp = it)
+        }
+        LayoutNumberRow("左右边距", settings, onAdjust, ReaderSettings::marginHorizontalDp, 8f..48f, 1f, "dp") {
+            copy(marginHorizontalDp = it)
+        }
+    }
+
+    ReaderGroup("间距") {
+        SegmentRow("段距", PARA_SPACING_OPTIONS, settings.paragraphSpacingEm, 0.05f) {
+            onUpdate(settings.copy(paragraphSpacingEm = it))
+        }
+    }
+
+    ReaderGroup("段落") {
+        SegmentRow("首行缩进", INDENT_OPTIONS, settings.firstLineIndentEm, 0.05f) {
+            onUpdate(settings.copy(firstLineIndentEm = it))
+        }
+        SwitchRow(
+            title = "两端对齐",
+            subtitle = "每行左右都贴齐边距。关掉后行尾参差，但字距不会被拉开",
+            checked = settings.justify,
+            onCheckedChange = { onUpdate(settings.copy(justify = it)) },
+            position = SettingGroupPosition.Last,
+        )
+    }
+
+    ReaderGroup("标题") {
+        SegmentRow("字号", TITLE_SCALE_OPTIONS, settings.titleScale, 0.05f) {
+            onUpdate(settings.copy(titleScale = it))
+        }
+        SegmentRow("上间距", TITLE_TOP_OPTIONS, settings.titleTopSpacingDp, 1f) {
+            onUpdate(settings.copy(titleTopSpacingDp = it))
+        }
+    }
+
+}
+
+@Composable
+private fun LayoutNumberRow(
+    label: String,
+    settings: ReaderSettings,
+    onAdjust: (ReaderSettings.() -> ReaderSettings) -> Unit,
+    read: (ReaderSettings) -> Float,
+    range: ClosedFloatingPointRange<Float>,
+    step: Float,
+    unit: String,
+    decimals: Int = 0,
+    write: ReaderSettings.(Float) -> ReaderSettings,
+) {
+    val value = read(settings)
+    fun adjust(delta: Float) = onAdjust {
+        val next = ((read(this) + delta) * 100).roundToInt() / 100f
+        write(next.coerceIn(range.start, range.endInclusive))
+    }
+    ReaderRow(label, slots = 4) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            val style = MiuixTheme.textStyles.body1
+            FontSizeEnd("−", style, "减小$label", value > range.start) { adjust(-step) }
+            Text(
+                text = String.format(LocalLocale.current.platformLocale, "%.${decimals}f %s", value, unit),
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                style = style,
+            )
+            FontSizeEnd("+", style, "增大$label", value < range.endInclusive) { adjust(step) }
+        }
+    }
+}
+
+@Composable
+private fun FlipTab(settings: ReaderSettings, onUpdate: (ReaderSettings) -> Unit) {
+    ReaderGroup("翻页方式") {
+        ReaderBlock {
+            SegmentedChoice(
+                options = FlipAnimation.entries.map { it.label },
+                selectedIndex = FlipAnimation.entries.indexOf(settings.flipAnimation),
+                onSelect = { onUpdate(settings.copy(flipAnimation = FlipAnimation.entries[it])) },
+            )
+        }
+    }
+
+    // 滚动模式没有"页"，自动翻页 / 音量键 / 震动无从谈起 —— 与其留在那儿让人调了没反应，不如藏起来。
+    // 点击左右跳整页则反过来：仿真里是主操作，滚动里默认关，单独给开关。
+    if (settings.flipAnimation != FlipAnimation.SCROLL) {
+        // 七档间隔放不进一排分段按钮，仍用能横滚的 chip 条
+        ReaderGroup("自动翻页间隔") {
+            Box(Modifier.padding(vertical = Dimens.gapS)) {
+                ChipRow(
+                    options = AUTO_FLIP_OPTIONS.map { "${it}s" },
+                    selectedIndex = AUTO_FLIP_OPTIONS.indexOf(settings.autoFlipSeconds),
+                    onSelect = { onUpdate(settings.copy(autoFlipSeconds = AUTO_FLIP_OPTIONS[it])) },
+                    contentPadding = PaddingValues(horizontal = Dimens.listHorizontal),
+                    solidSelection = true,
+                )
+            }
+        }
+
+        ReaderGroup {
+            SwitchRow(
+                title = "音量键翻页",
+                checked = settings.volumeKeyFlip,
+                onCheckedChange = { onUpdate(settings.copy(volumeKeyFlip = it)) },
+                position = SettingGroupPosition.First,
+            )
+            SwitchRow(
+                title = "翻页震动",
+                subtitle = "翻过一页时轻震一下。连续翻页会一直震，默认关",
+                checked = settings.flipHaptic,
+                onCheckedChange = { onUpdate(settings.copy(flipHaptic = it)) },
+                position = SettingGroupPosition.Last,
+            )
+        }
+
+        ReaderGroup("点击区域") {
+            ReaderBlock { TapZoneEditor(settings.tapZones) { onUpdate(settings.copy(tapZones = it)) } }
+        }
+    } else {
+        ReaderGroup {
+            SwitchRow(
+                title = "点击翻页",
+                subtitle = "打开后按下面的点击区域翻页；默认关，点击只唤出菜单",
+                checked = settings.scrollClickToFlip,
+                onCheckedChange = { onUpdate(settings.copy(scrollClickToFlip = it)) },
+                position = SettingGroupPosition.Alone,
+            )
+        }
+        // 关着时分区不生效，摆出来只会让人以为改了没反应
+        if (settings.scrollClickToFlip) {
+            ReaderGroup("点击区域") {
+                ReaderBlock { TapZoneEditor(settings.tapZones) { onUpdate(settings.copy(tapZones = it)) } }
+            }
+        }
+    }
+}
+
+/**
+ * 点击区域：上面一排预设，下面是代表整块阅读区的九宫格，点一格就在
+ * 上一页 → 下一页 → 菜单 → 无动作 之间轮换。正中那格固定是菜单，画出来但不可点（见 [TapZones]）。
+ *
+ * 轮换而不是每格弹选择面板：编辑器本身就在底部面板里，再叠一层面板，关两次才回得到正文。
+ * 四个状态靠格子里的字和底色区分，轮一圈就回来，点错了接着点即可。
+ */
+@Composable
+private fun TapZoneEditor(zones: TapZones, onChange: (TapZones) -> Unit) {
+    val presets = TapZones.Preset.entries
+    val presetIndex = presets.indexOfFirst { it.zones == zones }
+    Column {
+        // 改过任何一格、跟哪个预设都对不上时，补一个选中的「自定义」，让人知道当前不是预设而不是什么都没选
+        ChipRow(
+            options = presets.map { it.label } + if (presetIndex < 0) listOf("自定义") else emptyList(),
+            selectedIndex = if (presetIndex < 0) presets.size else presetIndex,
+            onSelect = { i -> presets.getOrNull(i)?.let { onChange(it.zones) } },
+            solidSelection = true,
+        )
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = Dimens.gapS),
+            verticalArrangement = Arrangement.spacedBy(Dimens.gapXS),
+        ) {
+            for (row in 0..2) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gapXS)) {
+                    for (col in 0..2) {
+                        val index = row * 3 + col
+                        TapZoneCell(
+                            action = zones.at(col, row),
+                            position = TAP_ZONE_POSITIONS[index],
+                            // 正中锁死为菜单
+                            onClick = if (index == TapZones.CENTER) null else {
+                                { onChange(zones.with(index, zones.at(col, row).next())) }
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TapZoneCell(
+    action: TapAction,
+    position: String,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MiuixTheme.colorScheme
+    // 面板在 ReaderThemeScope 里，颜色都是从纸色派生的（见那里）：下一页是强调色的淡底、最显眼；
+    // 上一页是正文色 14% 的灰底、淡一档；菜单再淡一档（正文色 6%），像纸面上一级浅浅的台阶；
+    // 无动作不铺底只描边，像「这格空着」。四态靠色相 + 浓淡 + 有无底色拉开。
+    // 灰底直接叠正文色而不取 Miuix 的中性槽：那几档在深色纸上有的恰好等于卡片色，格子会隐身
+    val (container, content) = when (action) {
+        TapAction.PREV -> scheme.onSurface.copy(alpha = 0.14f) to scheme.onSurface
+        TapAction.NEXT -> scheme.primaryContainer to scheme.onPrimaryContainer
+        TapAction.MENU -> scheme.onSurface.copy(alpha = 0.06f) to scheme.onSurface
+        TapAction.NONE -> Color.Transparent to scheme.onSurfaceVariantSummary
+    }
+    Box(
+        modifier
+            .heightIn(min = Dimens.touchTarget)
+            // 和分段按钮的浮块同一档圆角、同一种 squircle 弯法
+            .squircleSurface(container, AppShapes.radiusSmall)
+            .then(
+                if (action == TapAction.NONE) {
+                    Modifier.squircleBorder(Dimens.strokeThin, scheme.dividerLine, AppShapes.radiusSmall)
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick)
+                else Modifier
+            )
+            // 读屏得知道是哪一格、现在是什么、点了会怎样；只念格子里的「下一页」分不清九格。
+            // 用 clearAndSet 把格子里的 Text 吞掉：只加 contentDescription 的话，可点格会念两遍动作名，
+            // 不可点的正中格还会拆成「格子 + 文字」两个焦点。clickable 在它外层，按钮角色与点击不受影响
+            .clearAndSetSemantics {
+                contentDescription = if (onClick != null) "${position}：${action.label}，点按切换"
+                else "${position}：${action.label}，固定"
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(action.label, style = MiuixTheme.textStyles.body2, fontWeight = FontWeight.Medium, color = content)
+    }
+}
+
+/** 轮换顺序：两个翻页方向挨着，最常用的改法（左右互换、全改下一页）点一两下就到 */
+private fun TapAction.next(): TapAction = when (this) {
+    TapAction.PREV -> TapAction.NEXT
+    TapAction.NEXT -> TapAction.MENU
+    TapAction.MENU -> TapAction.NONE
+    TapAction.NONE -> TapAction.PREV
+}
+
+private val TAP_ZONE_POSITIONS = listOf(
+    "左上", "正上", "右上",
+    "左侧", "正中", "右侧",
+    "左下", "正下", "右下",
+)
+
+@Composable
+private fun MoreTab(
+    settings: ReaderSettings,
+    isNetBook: Boolean,
+    onUpdate: (ReaderSettings) -> Unit,
+    textSelectionEnabled: Boolean,
+    onTextSelectionChange: (Boolean) -> Unit,
+) {
+    // 本地书默认显示，在线书默认关闭；两个开关各自记忆，调整后按同一字符位置重排。
+    ReaderGroup("图片") {
+        SwitchRow(
+            title = "正文显示图片",
+            subtitle = if (isNetBook) {
+                if (settings.showImages) "在线书图片需要下载，会使用流量。长按图片可以看大图"
+                else "当前只显示文字。打开后显示在线书插图，会使用流量"
+            } else {
+                if (settings.showImages) "显示本地书插图，无需联网。长按图片可以看大图"
+                else "当前只显示文字。打开后显示本地书插图，无需联网"
+            },
+            checked = settings.showImages,
+            onCheckedChange = { onUpdate(settings.copy(showImages = it)) },
+            position = SettingGroupPosition.Alone,
+        )
+    }
+
+    ReaderGroup("预加载章节") {
+        ReaderBlock {
+            SegmentedChoice(
+                options = PRELOAD_OPTIONS.map { if (it == 0) "关闭" else "$it 章" },
+                selectedIndex = PRELOAD_OPTIONS.indexOf(settings.preloadChapters),
+                onSelect = { onUpdate(settings.copy(preloadChapters = PRELOAD_OPTIONS[it])) },
+            )
+        }
+    }
+
+    ReaderGroup {
+        // 这两个设置一直存在于 ReaderSettings 里，却**从来没有 UI 能改**
+        SwitchRow(
+            title = "阅读时保持屏幕常亮",
+            checked = settings.keepScreenOn,
+            onCheckedChange = { onUpdate(settings.copy(keepScreenOn = it)) },
+            position = SettingGroupPosition.First,
+        )
+        SwitchRow(
+            title = "页脚显示电量",
+            subtitle = "阅读页右下角的电池图标。关掉后仍显示页码、进度和时间",
+            checked = settings.showBattery,
+            onCheckedChange = { onUpdate(settings.copy(showBattery = it)) },
+            position = SettingGroupPosition.Middle,
+        )
+
+        // 存储仍在 AppPrefs（不在 ReaderSettings）：它本就存在那儿，搬进 ReaderSettings 要跨
+        // DataStore 迁移，弄不好会把已经关掉它的用户静默改回开。这里只是把开关挪到它该在的地方 ——
+        // 它是纯粹的阅读页设置，从前却待在全局设置的「书源」分组下。
+        SwitchRow(
+            title = "长按选字",
+            subtitle = if (textSelectionEnabled) {
+                "长按正文可选中、复制，或建一条只对这本书生效的净化规则"
+            } else {
+                "已关闭。翻页时手指停顿久了不会再误触选中"
+            },
+            checked = textSelectionEnabled,
+            onCheckedChange = onTextSelectionChange,
+            position = SettingGroupPosition.Last,
+        )
+    }
+
+    // 不开菜单直接调（见 QuickAdjust.kt）。默认开；觉得误触的可以在这儿关
+    ReaderGroup("手势") {
+        SwitchRow(
+            title = "双指缩放调字号",
+            subtitle = "不用开菜单，在正文上双指张开、捏合",
+            checked = settings.pinchFontSize,
+            onCheckedChange = { onUpdate(settings.copy(pinchFontSize = it)) },
+            position = SettingGroupPosition.First,
+        )
+        SwitchRow(
+            title = "右边缘上下滑调亮度",
+            subtitle = "沿屏幕右边缘竖着滑，往上亮、往下暗。滚动翻页时不可用",
+            checked = settings.edgeBrightness,
+            onCheckedChange = { onUpdate(settings.copy(edgeBrightness = it)) },
+            position = SettingGroupPosition.Last,
+        )
+    }
+}
+
+/**
+ * 自定义纸张：调纸色（色相 / 浓度 / 明度）与字色。
+ *
+ * **一行一条、各带名字、轨道画成渐变**（[AppColorSlider]）。从前是「纸色」小标题下三条 28dp 的粗轨上下零间距：
+ * 拇指压到下一条上、看着是一整块，三条也分不清谁是色相谁是明度（名字只有读屏念得出来）；轨道一律填强调色，
+ * 看不出往哪拖会变成什么色（被指出过）。现在名字在行头，轨道上看到的就是拖到那儿得到的颜色：
+ * - 色相：最浓那档（[PAPER_SAT_MAX]）的一圈色相。纸太暗时按 [HUE_TRACK_MIN_VALUE] 的明度画，深色纸上也看得出色相
+ * - 浓度：从灰到这个色相最浓（上限 [PAPER_SAT_MAX]，纸不会太艳）
+ * - 明度：从黑到亮
+ * - 字色：这张纸上从最深到最浅的字
+ *
+ * **实时报对比度**，低于 7:1 就明说。不拦着用户配，但得让他知道代价 ——
+ * 「墨绿纸配灰字」看着挺雅，读两章眼睛就疼，而用户根本不会把眼疼归因到自己调的色上。
+ *
+ * **编辑中以手里这份 HSV（[PaperHsv]）为准**，不每次从 ARGB 反解：纸色是 8 位 RGB，浓度很低时反解出的色相会跳；
+ * 浓度拖到 0（纯灰）、明度拖到 0（纯黑）时干脆反解不出色相 / 浓度，色相轨的拇指会一下跳回最左（红）。
+ * 别处改了纸（换了预设又切回来、同步下来一份新配色）、对不上手里这份时，才从 ARGB 重新反解。
+ */
+@Composable
+private fun CustomPaperEditor(
+    theme: ReaderTheme,
+    onChange: (ReaderTheme) -> Unit,
+    onChangeFinished: () -> Unit,
+) {
+    val held = remember { HeldPaper() }
+    val parsed = remember(theme.background, theme.textColor) { PaperHsv.of(theme) }
+    val paper = held.value?.takeIf { it.background == theme.background && it.text == theme.textColor } ?: parsed
+
+    fun update(next: PaperHsv) {
+        held.value = next
+        onChange(ReaderTheme.custom(next.background, next.text))
+    }
+
+    val hueValue = paper.v.coerceAtLeast(HUE_TRACK_MIN_VALUE)
+    val textSat = paperTextSaturation(paper.s)
+    val hueTrack = remember(hueValue) {
+        List(HUE_TRACK_STOPS) { i -> hsvToColor(360f * i / (HUE_TRACK_STOPS - 1), PAPER_SAT_MAX, hueValue) }
+    }
+    val satTrack = remember(paper.h, paper.v) {
+        List(TRACK_STOPS) { i -> hsvToColor(paper.h, PAPER_SAT_MAX * i / (TRACK_STOPS - 1), paper.v) }
+    }
+    val valueTrack = remember(paper.h, paper.s) {
+        List(TRACK_STOPS) { i -> hsvToColor(paper.h, paper.s, i / (TRACK_STOPS - 1f)) }
+    }
+    val textTrack = remember(paper.h, textSat) {
+        List(TRACK_STOPS) { i -> hsvToColor(paper.h, textSat, i / (TRACK_STOPS - 1f)) }
+    }
+    val paperColor = Color(paper.background)
+    val ratio = ReaderTheme.contrastRatio(theme.background, theme.textColor)
+
+    Column(
+        Modifier.padding(top = Dimens.gapL),
+        verticalArrangement = Arrangement.spacedBy(Dimens.gapM),
+    ) {
+        PaperSliderRow("色相") {
+            AppColorSlider(
+                value = paper.h,
+                valueRange = 0f..360f,
+                onValueChange = { update(paper.copy(h = it)) },
+                onValueChangeFinished = onChangeFinished,
+                trackColors = hueTrack,
+                thumbColor = hsvToColor(paper.h, PAPER_SAT_MAX, hueValue),
+                label = "纸色色相",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        PaperSliderRow("浓度") {
+            AppColorSlider(
+                value = paper.s,
+                valueRange = 0f..PAPER_SAT_MAX,
+                onValueChange = { update(paper.copy(s = it)) },
+                onValueChangeFinished = onChangeFinished,
+                trackColors = satTrack,
+                thumbColor = paperColor,
+                label = "纸色浓度",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        PaperSliderRow("明度") {
+            AppColorSlider(
+                value = paper.v,
+                onValueChange = { update(paper.copy(v = it)) },
+                onValueChangeFinished = onChangeFinished,
+                trackColors = valueTrack,
+                thumbColor = paperColor,
+                label = "纸色明度",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        // 纸、字两组之间比组内多空一档：一眼看出前三条管纸、这条管字
+        PaperSliderRow("字色", Modifier.padding(top = Dimens.gapXS)) {
+            AppColorSlider(
+                value = paper.t,
+                onValueChange = { update(paper.copy(t = it)) },
+                onValueChangeFinished = onChangeFinished,
+                trackColors = textTrack,
+                thumbColor = Color(paper.text),
+                label = "字色深浅",
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+
+    Text(
+        text = "正文对比度 %.1f:1".format(ratio) + when {
+            ratio >= 7.0 -> " · 长时间阅读没问题"
+            ratio >= 4.5 -> " · 能看清，但读久了会累"
+            else -> " · 太低，读起来费劲"
+        },
+        style = MiuixTheme.textStyles.footnote1,
+        color = if (ratio >= 7.0) MiuixTheme.colorScheme.onSurfaceVariantSummary
+        else MiuixTheme.colorScheme.error,
+        modifier = Modifier.padding(top = Dimens.gapS, bottom = Dimens.gapXS),
+    )
+}
+
+/**
+ * 调色区的一行：两个字的名字 + 一条调色滑块。名字都是两个汉字，宽度天然一样，几条滑轨左端对得齐，不用定宽。
+ * 名字只给看：读屏念滑块自己的 label（「纸色色相」比「色相」说得全），这里不再念一遍。
+ */
+@Composable
+private fun PaperSliderRow(
+    name: String,
+    modifier: Modifier = Modifier,
+    slider: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.gapM),
+    ) {
+        Text(
+            name,
+            style = MiuixTheme.textStyles.body2,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.clearAndSetSemantics {},
+        )
+        slider()
+    }
+}
+
+/**
+ * 自定义纸张手里那份 HSV：纸的色相 [h]（0~360）/ 浓度 [s] / 明度 [v]，加上字的明度 [t]（0 = 黑，1 = 白）。
+ * 字的色相跟纸走、浓度由纸的浓度推出来（[paperTextSaturation]），不单独调。
+ */
+private data class PaperHsv(val h: Float, val s: Float, val v: Float, val t: Float) {
+    val background: Long = hsvToArgb(h, s, v)
+    val text: Long = hsvToArgb(h, paperTextSaturation(s), t)
+
+    companion object {
+        fun of(theme: ReaderTheme): PaperHsv {
+            val bg = argbToHsv(theme.background)
+            return PaperHsv(bg[0], bg[1], bg[2], argbToHsv(theme.textColor)[2])
+        }
+    }
+}
+
+/** 最近一次调出来的那份 HSV。只在回调里写、组合时读（读到的那一拍 theme 已经是它调出来的了），不用是 State */
+private class HeldPaper {
+    var value: PaperHsv? = null
+}
+
+/** 字色沿用纸的色相，但压低浓度 —— 完全同色相的浓字会显脏，完全无彩的灰字又跟纸不搭 */
+private fun paperTextSaturation(paperSat: Float): Float = (paperSat * 0.45f).coerceAtMost(0.35f)
+
+/** 纸色浓度上限：再浓就不像纸了 */
+private const val PAPER_SAT_MAX = 0.25f
+
+/** 色相轨至少按这个明度画：纸调得很暗时，按纸的明度画出来是一条看不出色相的黑带 */
+private const val HUE_TRACK_MIN_VALUE = 0.6f
+
+/** 色相轨每 30° 一个色标，一圈 13 个（首尾都是红） */
+private const val HUE_TRACK_STOPS = 13
+
+/** 其余几条轨道的色标数。HSV 的浓度 / 明度在 RGB 里近乎线性，几个色标就够平滑 */
+private const val TRACK_STOPS = 6
+
+/**
+ * 纸张主题选择。
+ *
+ * **横向可滚动**：从前是固定 Row，4 款刚好铺满一行；现在有 10 款，再塞进定宽的 Row 里
+ * 只会把每个色块压扁（自动翻页那排 chip 就是这么被压成竖排的）。
+ *
+ * **色块底下带名字**：六款浅色纸缩成 48dp 的圆点后，「暖纸/宣纸/牛皮/灰岩」肉眼几乎分不出，
+ * 光靠颜色选主题等于抽奖。名字也顺带修好了读屏 —— 从前 contentDescription 是 id，
+ * TalkBack 会念出英文的 "paper"。
+ */
+@Composable
+private fun ThemeSwatches(
+    settings: ReaderSettings,
+    onSelect: (String) -> Unit,
+    /** 左右内缩放在滚动内容里：色板随内容滚到分组卡的边缘，而不是在内缩线上被截断 */
+    horizontalPadding: Dp = 0.dp,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            // 手指松开就停，紧接着点色板不必先截停惯性滚动。
+            .horizontalScroll(rememberScrollState(), overscrollEffect = null, flingBehavior = PaperSwatchFling)
+            .padding(horizontal = horizontalPadding)
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.gapM),
+    ) {
+        ReaderTheme.ALL.forEach { theme ->
+            ThemeSwatch(
+                theme = theme,
+                selected = theme.id == settings.theme.id,
+                onClick = { onSelect(theme.id) },
+            )
+        }
+        val custom = if (settings.theme.id == ReaderTheme.CUSTOM_ID) settings.theme else settings.customPaper
+        ThemeSwatch(
+            theme = custom,
+            selected = settings.theme.id == ReaderTheme.CUSTOM_ID,
+            onClick = { onSelect(ReaderTheme.CUSTOM_ID) },
+        )
+    }
+}
+
+private object PaperSwatchFling : FlingBehavior {
+    override suspend fun ScrollScope.performFling(initialVelocity: Float): Float = initialVelocity
+}
+
+@Composable
+private fun ThemeSwatch(theme: ReaderTheme, selected: Boolean, onClick: () -> Unit) {
+    // 按下色块微微沉下去（见 sinkOnPress）
+    val press = remember { MutableInteractionSource() }
+    Column(
+        modifier = Modifier.selectable(
+            selected = selected,
+            interactionSource = press,
+            indication = null,
+            role = Role.RadioButton,
+            onClick = onClick,
+        ),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Dimens.gapXS),
+    ) {
+        Box(
+            Modifier
+                .size(Dimens.swatch)
+                .sinkOnPress(press)
+                .clip(CircleShape)
+                .background(Color(theme.background))
+                .indication(press, LocalIndication.current)
+                .border(
+                    width = if (selected) Dimens.strokeThick else Dimens.strokeThin,
+                    color = if (selected) MiuixTheme.colorScheme.primary
+                    else MiuixTheme.colorScheme.dividerLine,
+                    shape = CircleShape,
+                )
+                .clearAndSetSemantics {},
+            contentAlignment = Alignment.Center,
+        ) {
+            // 选中的打勾；没选中的放一个"文"字，直接把这款纸的正文对比度演示出来 ——
+            // 光看纸色选不出好不好读
+            if (selected) {
+                Icon(
+                    MiuixIcons.Basic.Check,
+                    contentDescription = null,
+                    Modifier.size(Dimens.iconSm),
+                    tint = Color(theme.textColor),
+                )
+            } else {
+                Text(
+                    "文",
+                    color = Color(theme.textColor),
+                    style = MiuixTheme.textStyles.body2,
+                )
+            }
+        }
+        Text(
+            theme.label,
+            style = MiuixTheme.textStyles.footnote2,
+            color = if (selected) MiuixTheme.colorScheme.primary
+            else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        )
+    }
+}
+
+/** 阅读设置面板的一级页与三个二级页。[title] 是二级页标题行上的页名，也是一级页入口上的字；一级页没有标题 */
+private enum class SettingsPage(val title: String?) {
+    Main(null),
+    Typeset("排版"),
+    Flip("翻页"),
+    More("更多"),
+}
+
+/** 一级页上拖起来会让面板让开的两条滑轨 */
+private enum class SettingsSlider { Brightness, FontSize }
+
+/** 到头不可点的字号 A 的透明度，同 AppIconButton 等封装的禁用态 */
+private const val DISABLED_CONTENT_ALPHA = 0.38f
+
+/** 设置面板内容区占窗口高度的比例。加上 Tab 与拖拽把手约半屏，上半屏留给正文当实时预览 */
+private const val PANEL_HEIGHT_FRACTION = 0.42f
+
+/** 自动翻页可选间隔（秒）。太快来不及读，太慢不如自己翻 */
+private val AUTO_FLIP_OPTIONS = listOf(5, 10, 15, 20, 30, 45, 60)
+
+/** 预取多少章正文。给多了只是白耗流量：读者不会一口气跳着读十章 */
+private val PRELOAD_OPTIONS = listOf(0, 1, 3, 5, 10)

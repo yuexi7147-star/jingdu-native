@@ -1,0 +1,392 @@
+package com.radium.inkwell.data.db
+
+import androidx.room3.Database
+import androidx.room3.RoomDatabase
+import androidx.room3.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
+import com.radium.inkwell.data.db.dao.BookDao
+import com.radium.inkwell.data.db.dao.BookSourceDao
+import com.radium.inkwell.data.db.dao.BookSourceHitDao
+import com.radium.inkwell.data.db.dao.ChapterDao
+import com.radium.inkwell.data.db.dao.ReplaceRuleDao
+import com.radium.inkwell.data.db.dao.RssArticleDao
+import com.radium.inkwell.data.db.dao.RssSourceDao
+import com.radium.inkwell.data.db.dao.ReadingStatDao
+import com.radium.inkwell.data.db.dao.SourceReadHealthDao
+import com.radium.inkwell.data.db.entity.BookEntity
+import com.radium.inkwell.data.db.entity.BookSourceEntity
+import com.radium.inkwell.data.db.entity.BookSourceHitEntity
+import com.radium.inkwell.data.db.entity.ChapterEntity
+import com.radium.inkwell.data.db.entity.ReplaceRuleEntity
+import com.radium.inkwell.data.db.entity.RssArticleEntity
+import com.radium.inkwell.data.db.entity.RssSourceEntity
+import com.radium.inkwell.data.db.entity.ReadingStatEntity
+import com.radium.inkwell.data.db.entity.SourceReadHealthEntity
+
+@Database(
+    entities = [
+        BookEntity::class,
+        ChapterEntity::class,
+        BookSourceEntity::class,
+        BookSourceHitEntity::class,
+        ReplaceRuleEntity::class,
+        RssSourceEntity::class,
+        ReadingStatEntity::class,
+        RssArticleEntity::class,
+        SourceReadHealthEntity::class,
+    ],
+    version = 23,
+    exportSchema = true,
+)
+abstract class InkwellDb : RoomDatabase() {
+    abstract fun bookDao(): BookDao
+    abstract fun chapterDao(): ChapterDao
+    abstract fun bookSourceDao(): BookSourceDao
+    abstract fun bookSourceHitDao(): BookSourceHitDao
+    abstract fun replaceRuleDao(): ReplaceRuleDao
+    abstract fun rssSourceDao(): RssSourceDao
+    abstract fun readingStatDao(): ReadingStatDao
+    abstract fun rssArticleDao(): RssArticleDao
+    abstract fun sourceReadHealthDao(): SourceReadHealthDao
+
+    companion object {
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN searchAt INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN searchRetryAt INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL("DROP INDEX idx_book_source_enabled")
+                connection.execSQL("CREATE INDEX idx_book_source_enabled ON book_source (enabled, deleted, sortOrder, name, id, updatedAt, checkStatus, respondTime, searchMs, searchFails, searchAt, searchRetryAt, checkedAt)")
+                connection.execSQL("""
+                    CREATE TABLE IF NOT EXISTS source_read_health (
+                        sourceId TEXT NOT NULL, stage TEXT NOT NULL, ruleHash INTEGER NOT NULL,
+                        score INTEGER NOT NULL, samples INTEGER NOT NULL, observedAt INTEGER NOT NULL,
+                        PRIMARY KEY(sourceId, stage, ruleHash)
+                    )
+                """.trimIndent())
+            }
+        }
+
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE book ADD COLUMN removedFromShelf INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * 书源脚本的变量落库（Legado 的 book.variable / chapter.variable）：
+         * 目录规则 @put 存的参数，正文规则 @get 要取得到。
+         * 只加列、带默认值 —— 老用户的书架与阅读进度原样保留。
+         */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE book ADD COLUMN variable TEXT NOT NULL DEFAULT ''")
+                connection.execSQL("ALTER TABLE chapter ADD COLUMN variable TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /**
+         * 留存书源的 legado 原文 + 转换器版本号。书源在导入时就被转换成我们的规则格式存库了，
+         * 升级 App 不会重转 —— 于是我们修的每个转换器 bug 都只对「新导入的书源」生效。
+         * 有了原文与版本号，升级后就能把旧转换器转出来的书源重新转一遍。
+         *
+         * 老数据的 sourceJson 为空（当时没存），重转不了，只能让用户重新导入一次。
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN sourceJson TEXT NOT NULL DEFAULT ''")
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN converterVersion INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** 用户自定义的净化替换规则。纯新增表，不动任何既有数据 */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS replace_rule (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        pattern TEXT NOT NULL,
+                        replacement TEXT NOT NULL DEFAULT '',
+                        isRegex INTEGER NOT NULL DEFAULT 1,
+                        scope TEXT NOT NULL DEFAULT '',
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        sortOrder INTEGER NOT NULL DEFAULT 0,
+                        updatedAt INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /** 书签。位置存 (章, 章内字符偏移)，与阅读进度同一套坐标 —— 存页码会被改字号毁掉 */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS bookmark (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        bookId TEXT NOT NULL,
+                        chapterIndex INTEGER NOT NULL,
+                        charOffset INTEGER NOT NULL,
+                        chapterTitle TEXT NOT NULL,
+                        excerpt TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                connection.execSQL("CREATE INDEX IF NOT EXISTS index_bookmark_bookId ON bookmark(bookId)")
+            }
+        }
+
+        /**
+         * 书架分组；同时把 beta.26 短暂存在过的 bookmark 表丢掉 —— 书签功能撤了，
+         * 留个没人读的空表在库里只会让下一个看 schema 的人困惑。
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("DROP TABLE IF EXISTS bookmark")
+                connection.execSQL("ALTER TABLE book ADD COLUMN groupName TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** 书籍隐藏。只加列 */
+        /** 追更红点：刷新目录时新增了几章、且还没打开过 */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE book ADD COLUMN newChapterCount INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * 软删除墓碑。删除改为打标记，不再真的删行。
+         *
+         * 从前删除在 WebDAV 多设备同步下**根本留不住**：合并是并集，本地删掉的东西远端
+         * 还在，下次同步就被当成「别的设备新加的」补回来 —— 用户删一次它回来一次。
+         * 行留着才有地方记「删过」这件事，合并的 LWW 才能拿它跟远端的旧副本比。
+         *
+         * 只加列、带默认值 0（= 未删除），老数据原样保留。
+         */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                listOf("book", "book_source", "replace_rule", "rss_source").forEach { table ->
+                    connection.execSQL("ALTER TABLE $table ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+        }
+
+        /**
+         * 补清孤儿「本书专属」净化规则：过去删书不连带软删这些行，列表里会留下
+         * 指着已删书 / 墓碑书的规则。打墓碑（并刷新 updatedAt）以便 WebDAV LWW 同步删除。
+         * 通用规则（bookId 为空）不动。
+         */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val now = System.currentTimeMillis()
+                connection.execSQL(
+                    """
+                    UPDATE replace_rule
+                    SET deleted = 1, updatedAt = $now
+                    WHERE deleted = 0
+                      AND bookId != ''
+                      AND bookId NOT IN (SELECT id FROM book WHERE deleted = 0)
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        /**
+         * 试读未上架。从预览直接读也要落库（阅读器靠书行+目录），但不能因此出现在书架上。
+         * 只加列、默认 1 —— 老数据都是用户加过或导入过的，原样留在书架。
+         */
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE book ADD COLUMN inShelf INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
+        /**
+         * 本机「最近打开」时间，书架排序用。readAt 改为只在进度真的挪动时才更新（同步裁决不被
+         * 「开一下书」污染），排序就得另有一列记「打开过」。只加列、默认 0 —— 老数据按 readAt 排，与原来一致。
+         */
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE book ADD COLUMN openedAt INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * 书源的搜索测速（滑动平均耗时 + 连续失败次数），搜索按它排先后、定超时。
+         * 只加列：默认 -1 / 0 即「没测过」，老用户第一次搜索照旧按校验结果与原顺序来，搜过几次才逐渐生效。
+         */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN searchMs INTEGER NOT NULL DEFAULT -1")
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN searchFails INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * 书源表的两条覆盖索引（理由见 [com.radium.inkwell.data.db.entity.BookSourceEntity]）。
+         * 只建索引，不动任何一行数据。
+         *
+         * 语句**逐字照抄** Room 按实体生成的建表代码：开库时 Room 拿 PRAGMA 读出的索引（名字、列、顺序）
+         * 跟实体上声明的逐项比，差一个字就拒绝开库 —— 那是每个老用户一启动就崩。改实体上的索引必须同步改这里。
+         */
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `idx_book_source_list` ON `book_source` (`deleted`, `sortOrder`, `name`, `id`, `enabled`, `updatedAt`, `groupName`, `checkStatus`, `checkMessage`, `respondTime`, `checkedAt`)")
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `idx_book_source_enabled` ON `book_source` (`enabled`, `deleted`, `sortOrder`, `name`, `id`, `updatedAt`, `checkStatus`, `respondTime`, `searchMs`, `searchFails`)")
+            }
+        }
+
+        /** 阅读时长（阅读记录页）。纯新增表，老数据一行不动；从升级这一刻开始记 */
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS reading_stat (
+                        deviceId TEXT NOT NULL,
+                        day INTEGER NOT NULL,
+                        bookId TEXT NOT NULL,
+                        millis INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        PRIMARY KEY(deviceId, day, bookId)
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        /**
+         * 订阅文章的本机缓存（订阅页先显示上次的、读过的变灰，见 [RssArticleEntity]）。纯新增表，老数据一行不动。
+         *
+         * 语句**逐字照抄** Room 按实体生成的建表代码（列、顺序、可空、主键、索引名），理由同 [MIGRATION_18_19]：
+         * 差一个字 Room 就拒绝开库。改实体必须同步改这里。
+         */
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `rss_article` (`feed` TEXT NOT NULL, `articleKey` TEXT NOT NULL, " +
+                        "`sourceId` TEXT NOT NULL, `title` TEXT NOT NULL, `link` TEXT NOT NULL, `description` TEXT, " +
+                        "`image` TEXT, `pubDate` TEXT, `pubTime` INTEGER NOT NULL, `firstSeenAt` INTEGER NOT NULL, " +
+                        "`lastSeenAt` INTEGER NOT NULL, `position` INTEGER NOT NULL, `readAt` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`feed`, `articleKey`))",
+                )
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `idx_rss_article_source` ON `rss_article` (`sourceId`)")
+            }
+        }
+
+        /**
+         * 「这本书在这个源搜到过没有」的记忆，用于换源时把有这本书的源排到前面。
+         * 纯新增表 —— 老用户的书架、进度、书源一行不动；表是空的，
+         * 排序自然退化回原来的「全局健康度」，攒够数据才逐渐生效。
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS book_source_hit (
+                        bookId TEXT NOT NULL,
+                        sourceId TEXT NOT NULL,
+                        hit INTEGER NOT NULL,
+                        bookUrl TEXT,
+                        checkedAt INTEGER NOT NULL,
+                        PRIMARY KEY(bookId, sourceId)
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        /**
+         * 书源引擎改为原生 Legado：库里旧的 `json` 是自研格式，新模型（bookSourceUrl/ruleSearch…）
+         * 解不动，留着只会静默失效。**清空 book_source**，让升级用户看到空列表、主动重新导入
+         * （订阅源 rss_source 存的本就是原生 Legado 规则，不受影响）。
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("DELETE FROM book_source")
+                // 历史列随原生化下线。只删 book_source 的；rss_source 的同名列仍在用，不动。
+                // 不直接写 DROP COLUMN：Android 13 的 SQLite（3.32）没有它，见 dropColumns
+                connection.dropColumns("book_source", setOf("sourceJson", "converterVersion"))
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE book ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** 订阅源。纯新增表 */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS rss_source (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        icon TEXT NOT NULL DEFAULT '',
+                        groupName TEXT NOT NULL DEFAULT '',
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        sortOrder INTEGER NOT NULL DEFAULT 0,
+                        json TEXT NOT NULL,
+                        sourceJson TEXT NOT NULL DEFAULT '',
+                        converterVersion INTEGER NOT NULL DEFAULT 0,
+                        updatedAt INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /** 净化规则挂到具体某本书上（阅读页长按选字建的规则）；只加列 */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE replace_rule ADD COLUMN bookId TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /**
+         * 书源分组 + 校验结果落库。
+         * 校验一轮几百个源要好几分钟，结果只存内存的话退出页面就没了 ——
+         * 用户根本没机会拿它做后续处理（筛选失效、按响应时间排序、批量禁用）。
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN groupName TEXT NOT NULL DEFAULT ''")
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN checkStatus INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN checkMessage TEXT NOT NULL DEFAULT ''")
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN respondTime INTEGER NOT NULL DEFAULT -1")
+                connection.execSQL("ALTER TABLE book_source ADD COLUMN checkedAt INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+        /** 运行时注册与升级回归共用这条链，避免测试了迁移却忘了注册到应用。 */
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5,
+            MIGRATION_5_6,
+            MIGRATION_6_7,
+            MIGRATION_7_8,
+            MIGRATION_8_9,
+            MIGRATION_9_10,
+            MIGRATION_10_11,
+            MIGRATION_11_12,
+            MIGRATION_12_13,
+            MIGRATION_13_14,
+            MIGRATION_14_15,
+            MIGRATION_15_16,
+            MIGRATION_16_17,
+            MIGRATION_17_18,
+            MIGRATION_18_19,
+            MIGRATION_19_20,
+            MIGRATION_20_21,
+            MIGRATION_21_22,
+            MIGRATION_22_23,
+        )
+    }
+}

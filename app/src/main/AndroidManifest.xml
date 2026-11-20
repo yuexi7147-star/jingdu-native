@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 应用内下载更新包后拉起系统安装器（中转服务器源） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!--
+      Android 17（targetSdk 37）起，连局域网要这个运行时权限（「附近设备」组）。
+      自备 WebDAV 常是家里的 NAS（192.168.x.x / xxx.local）；没有它连接不报错、只会挂到超时。
+      只在 WebDAV 地址落在局域网里时才申请，见 util/LocalNetworkAccess.kt
+    -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+
+    <!--
+      application 的 android:icon 只出现在「设置 → 应用」「最近任务」这类地方，且**不随
+      alias 切换** —— 它是静态解析的。那里放默认款；桌面上显示哪个，由下面启用的 alias 决定。
+    -->
+
+    <!--
+      预测性返回：targetSdk 36 起 Android 16 设备默认就是开的，这里显式声明是把 minSdk
+      覆盖的 Android 13 ~ 15 设备也接上。开启后返回手势的拖拽进度会派发进应用（Android 14 起；
+      13 上只有「松手返回」，没有进度，转场照常播完）——
+      NavDisplay 拿它 seek 阅读页「缩回书位」的 predictivePopTransitionSpec（关书跟手，
+      松手才提交、半途可反悔）。App 内返回全部走 BackHandler，无旧式 onBackPressed。
+    -->
+    <application
+        android:name=".InkwellApp"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher_mark_paper"
+        android:theme="@style/Theme.Inkwell"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:supportsRtl="true">
+
+        <!--
+          MainActivity 自己**不带** LAUNCHER 入口，桌面入口全部由下面的 activity-alias 提供。
+
+          为什么非得这样：Android 的图标是装机时静态解析的，运行时改不了 android:icon。
+          想换图标只能准备多个带各自图标的 alias，再启用其中一个、禁用其余
+          （见 util/AppIcon.kt）。而被禁用的那个组件必须不是 MainActivity 本身 ——
+          alias 指向它，它一旦被禁，所有 alias 跟着失效。
+
+          alias 的 android:name 一旦发布就不能改：它被写进了用户桌面的快捷方式里。
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+
+        <activity-alias
+            android:name=".OpenBook"
+            android:targetActivity=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="application/epub+zip" />
+                <data android:mimeType="application/x-mobipocket-ebook" />
+                <data android:mimeType="application/vnd.amazon.ebook" />
+                <data android:mimeType="application/x-mobi8-ebook" />
+            </intent-filter>
+            <!-- 某些下载器只给通用 MIME；URI 保留文件后缀时仍可精确匹配。 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathSuffix=".txt" />
+                <data android:pathSuffix=".epub" />
+                <data android:pathSuffix=".mobi" />
+                <data android:pathSuffix=".azw" />
+                <data android:pathSuffix=".azw3" />
+                <data android:pathSuffix=".TXT" />
+                <data android:pathSuffix=".EPUB" />
+                <data android:pathSuffix=".MOBI" />
+                <data android:pathSuffix=".AZW" />
+                <data android:pathSuffix=".AZW3" />
+            </intent-filter>
+        </activity-alias>
+
+        <!--
+          桌面图标：4 种图形 × 5 种纸色，一个组合一个 alias（对应表见 util/AppIcon.kt，AppIconManifestTest 钉着两边对得上）。
+          .IconClassic / .IconLine / .IconNight / .IconBook / .IconInk 是 0.5.2 之前那五款位图图标的名字，
+          已经写进了用户桌面的快捷方式，接着分给五个新组合用；默认启用的仍是 .IconClassic（书签 · 暖纸）。
+        -->
+        <activity-alias
+            android:name=".IconClassic"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_mark_paper"
+            android:label="@string/app_name"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconMarkWhite"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_mark_white"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconMarkBamboo"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_mark_bamboo"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconMarkInkBlue"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_mark_inkblue"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconNight"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_mark_night"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconBook"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_turn_paper"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconTurnWhite"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_turn_white"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconTurnBamboo"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_turn_bamboo"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconTurnInkBlue"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_turn_inkblue"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconTurnNight"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_turn_night"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconInk"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_glass_paper"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconGlassWhite"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_glass_white"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconGlassBamboo"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_glass_bamboo"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconGlassInkBlue"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_glass_inkblue"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconGlassNight"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_glass_night"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconLine"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_para_paper"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconParaWhite"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_para_white"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconParaBamboo"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_para_bamboo"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconParaInkBlue"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_para_inkblue"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".IconParaNight"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_para_night"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- 导出书源：把 cacheDir 里的 JSON 通过分享面板交出去 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

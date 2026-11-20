@@ -1,0 +1,53 @@
+package com.radium.inkwell.data.db.dao
+
+import androidx.room3.Dao
+import androidx.room3.Query
+import androidx.room3.Upsert
+import com.radium.inkwell.data.db.entity.RssSourceEntity
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface RssSourceDao {
+
+    @Query("SELECT * FROM rss_source WHERE deleted = 0 ORDER BY sortOrder ASC, name ASC")
+    fun observeAll(): Flow<List<RssSourceEntity>>
+
+    /** 有没有开着的订阅源：书架顶栏的「订阅」按钮跟着它出现 / 消失（见 RssRepository.hasEnabledSourceState） */
+    @Query("SELECT EXISTS(SELECT 1 FROM rss_source WHERE enabled = 1 AND deleted = 0)")
+    fun observeHasEnabled(): Flow<Boolean>
+
+    @Query("SELECT * FROM rss_source WHERE id = :id")
+    suspend fun getById(id: String): RssSourceEntity?
+
+    @Query("SELECT * FROM rss_source")
+    suspend fun getAll(): List<RssSourceEntity>
+
+    @Upsert
+    suspend fun upsertAll(sources: List<RssSourceEntity>)
+
+    /** 启停同样要盖 updatedAt：合并按它做 LWW，不盖的话开关同步不出去、还会被旧副本改回来 */
+    @Query("UPDATE rss_source SET enabled = :enabled, updatedAt = :now WHERE id = :id")
+    suspend fun setEnabled(id: String, enabled: Boolean, now: Long)
+
+    /**
+     * 软删除：打标记而不是删行，并**同时更新 updatedAt** —— 合并靠它做 LWW 裁决，
+     * 不更新的话远端那份旧副本会比墓碑还"新"，删除又被覆盖回来。
+     */
+    @Query("UPDATE rss_source SET deleted = 1, updatedAt = :now WHERE id = :id")
+    suspend fun softDeleteById(id: String, now: Long)
+
+    // ---- 多选批量（订阅源页的底部操作条）：一条语句，同样盖 updatedAt ----
+
+    @Query("UPDATE rss_source SET enabled = :enabled, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setEnabledByIds(ids: List<String>, enabled: Boolean, now: Long)
+
+    @Query("UPDATE rss_source SET deleted = 1, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun softDeleteByIds(ids: List<String>, now: Long)
+
+    @Query("UPDATE rss_source SET groupName = :group, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setGroupByIds(ids: List<String>, group: String, now: Long)
+
+    /** 订阅源最近一次改动的时间（含墓碑）；空表为 0。同步「两边都没动就跳过」的本地一侧（见 WebDavRepository.syncLocked） */
+    @Query("SELECT COALESCE(MAX(updatedAt), 0) FROM rss_source")
+    suspend fun lastChangeAt(): Long
+}
