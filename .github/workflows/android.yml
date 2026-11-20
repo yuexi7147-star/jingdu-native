@@ -21,19 +21,24 @@ jobs:
       - name: Android SDK
         run: |
           yes | sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
-          sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-37" "build-tools;36.0.0" > /dev/null 2>&1 || echo "sdk install skipped"
+          sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-37" "build-tools;36.0.0" > /dev/null 2>&1 || echo "sdk skipped"
 
-      - name: Keystore dir
+      - name: Keystore
         run: |
-          mkdir -p $ANDROID_USER_HOME
+          mkdir -p $ANDROID_USER_HOME $GITHUB_WORKSPACE/keys
           chmod -R u+rwX $ANDROID_USER_HOME
-          echo "writable: $ANDROID_USER_HOME"
+          keytool -genkeypair -v -keystore $GITHUB_WORKSPACE/keys/jingdu.jks             -alias jingdu -keyalg RSA -keysize 2048 -validity 10000             -storepass jingdu123 -keypass jingdu123             -dname "CN=Jingdu, OU=Dev, O=Shiye, L=CN, S=CN, C=CN"
 
       - name: Build
+        env:
+          SIGNING_KEYSTORE_PATH: /home/runner/work/jingdu-native/jingdu-native/keys/jingdu.jks
+          SIGNING_STORE_PASSWORD: jingdu123
+          SIGNING_KEY_ALIAS: jingdu
+          SIGNING_KEY_PASSWORD: jingdu123
         run: |
           set -o pipefail
           chmod +x gradlew
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
       - name: Upload
         if: always()

@@ -16,6 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "com.radium.inkwell"
+        ndk { abiFilters += listOf("arm64-v8a") }
         minSdk = 33
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         targetSdk = 37
@@ -57,6 +58,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
