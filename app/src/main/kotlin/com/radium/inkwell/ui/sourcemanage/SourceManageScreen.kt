@@ -113,6 +113,17 @@ fun SourceManageScreen(
     val auditRunning by viewModel.auditRunning.collectAsStateWithLifecycle()
     val auditReport by viewModel.auditReport.collectAsStateWithLifecycle()
     val autoCheck by viewModel.autoCheck.collectAsStateWithLifecycle()
+    val autoFull by viewModel.autoFull.collectAsStateWithLifecycle()
+    val fullState by viewModel.fullState.collectAsStateWithLifecycle()
+    val fullHint = run {
+        val days = if (fullState.lastFinishedAt > 0) ((System.currentTimeMillis() - fullState.lastFinishedAt) / 86400000L) else -1L
+        when {
+            fullState.total == 0 -> null
+            fullState.cursor > 0 -> "本轮 " + fullState.cursor + "/" + fullState.total
+            days >= 0 -> "上次完成 " + days + " 天前"
+            else -> null
+        }
+    }
     val wifiOnly by viewModel.autoCheckWifiOnly.collectAsStateWithLifecycle()
     val failedCount by viewModel.failedCount.collectAsStateWithLifecycle()
     val options by viewModel.options.collectAsStateWithLifecycle()
@@ -338,6 +349,9 @@ fun SourceManageScreen(
                         onDismissReport = viewModel::dismissAuditReport,
                         autoCheck = autoCheck,
                         onToggleAutoCheck = viewModel::setAutoCheck,
+                        autoFull = autoFull,
+                        onToggleAutoFull = viewModel::setAutoFull,
+                        fullHint = fullHint,
                         wifiOnly = wifiOnly,
                         onToggleWifiOnly = viewModel::setAutoCheckWifiOnly,
                         modifier = Modifier.padding(bottom = Dimens.gapM),

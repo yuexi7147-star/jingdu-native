@@ -41,4 +41,28 @@ object SourceCheckScheduler {
     fun disable(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
     }
+
+    // ---- 半月完整校验 ----
+
+    private const val FULL_WORK_NAME = "source-full-check"
+
+    fun enableFull(context: Context, wifiOnly: Boolean) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
+            .build()
+
+        val req = PeriodicWorkRequestBuilder<SourceFullCheckWorker>(15, TimeUnit.DAYS)
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            FULL_WORK_NAME,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            req,
+        )
+    }
+
+    fun disableFull(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(FULL_WORK_NAME)
+    }
 }

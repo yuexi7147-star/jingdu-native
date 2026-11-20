@@ -44,6 +44,9 @@ fun SourceAuditSection(
     onDismissReport: () -> Unit,
     autoCheck: Boolean,
     onToggleAutoCheck: (Boolean) -> Unit,
+    autoFull: Boolean,
+    onToggleAutoFull: (Boolean) -> Unit,
+    fullHint: String?,
     wifiOnly: Boolean,
     onToggleWifiOnly: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -78,9 +81,16 @@ fun SourceAuditSection(
                 subtitle = "只测站点还能不能打开，失效的自动移除（可在隔离区恢复）",
                 checked = autoCheck,
                 onCheckedChange = onToggleAutoCheck,
-                position = if (autoCheck) SettingGroupPosition.First else SettingGroupPosition.Alone,
+                position = if (autoCheck || autoFull) SettingGroupPosition.First else SettingGroupPosition.Alone,
             )
-            if (autoCheck) {
+            SwitchRow(
+                title = "每半月完整校验",
+                subtitle = fullHint ?: "搜索 + 详情 + 正文，分批跑完一轮",
+                checked = autoFull,
+                onCheckedChange = onToggleAutoFull,
+                position = if (autoCheck || autoFull) SettingGroupPosition.Middle else SettingGroupPosition.Alone,
+            )
+            if (autoCheck || autoFull) {
                 SwitchRow(
                     title = "只在 Wi-Fi 下校验",
                     checked = wifiOnly,
