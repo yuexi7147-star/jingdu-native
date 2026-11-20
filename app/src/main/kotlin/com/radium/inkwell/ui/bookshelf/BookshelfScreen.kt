@@ -409,9 +409,17 @@ fun BookshelfScreen(
      * 书就能从它下面滚过去、一起被毛玻璃盖住 —— 放在内容区顶上的话，那一截永远挡着书架，玻璃顶栏下面也就没东西可透。
      * 隐藏区的状态不在这里，在底部的玻璃胶囊里（见 [HiddenCapsule]）。
      */
+    var shelfTab by remember { mutableStateOf(0) }
+
     val shelfHeader: @Composable () -> Unit = {
-        if (showShelf) {
-            Column {
+        Column {
+            // 书架 / 阅读历史、统计、工具条：有书没书都在，导入之后结构不会消失
+            ShelfTabsHeader(
+                count = books.size,
+                tab = shelfTab,
+                onTab = { shelfTab = it },
+            )
+            if (showShelf) {
                 // 只有真的分了组才显示筛选条 —— 没分组的人不该被一排"全部"占掉一行屏幕。
                 // 收敛到共享 ChipRow（与发现页/订阅页同一形态、同一首尾边距）
                 if (groups.isNotEmpty()) {
@@ -670,7 +678,7 @@ fun BookshelfScreen(
                 )
             }
         } else if (!showShelf) {
-            ShelfEmptyLayout(
+            ShelfEmptyBody(
                 onImport = { importMenuAt = ImportMenuAnchor.EMPTY },
                 importMenu = { importMenu(ImportMenuAnchor.EMPTY) },
                 modifier = Modifier.padding(padding),
@@ -1410,72 +1418,70 @@ private val REFRESH_TEXTS = listOf("下拉检查更新", "松开检查更新", "
 private enum class ImportMenuAnchor { TOOLBAR, EMPTY, WELCOME }
 
 
-/**
- * 空书架：按旧版的样子给出结构 —— 书架 / 阅读历史两个页签、统计行、工具条、空提示、底部导入按钮。
- * 旧版是一整页空白，只剩一句「书架空空如也」，看着像坏了。
- */
+
+/** 书架头部：页签 + 统计 + 工具条。有书没书都在，导入之后结构不会消失。 */
 @Composable
-private fun ShelfEmptyLayout(
+private fun ShelfTabsHeader(count: Int, tab: Int, onTab: (Int) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Dimens.screenPadding, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            listOf("书架", "阅读历史").forEachIndexed { i, label ->
+                Text(
+                    text = label,
+                    fontSize = if (i == tab) 21.sp else 19.sp,
+                    fontWeight = if (i == tab) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (i == tab) MiuixTheme.colorScheme.onBackground
+                    else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier.clickable { onTab(i) },
+                )
+            }
+        }
+
+        Text(
+            text = if (tab == 0) "$count 卷在架" else if (count == 0) "还没有阅读记录" else "$count 卷读过",
+            fontSize = 12.sp,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.padding(horizontal = Dimens.screenPadding),
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Dimens.screenPadding),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf("最近阅读", "列表", "排序").forEach { label ->
+                Text(
+                    text = label,
+                    fontSize = 12.5.sp,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MiuixTheme.colorScheme.surfaceContainer)
+                        .padding(horizontal = 13.dp, vertical = 7.dp),
+                )
+            }
+        }
+    }
+}
+
+/** 空书架的内容区：提示 + 底部导入，头部由 ShelfTabsHeader 统一给。 */
+@Composable
+private fun ShelfEmptyBody(
     onImport: () -> Unit,
     importMenu: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var tab by remember { mutableStateOf(0) }
-
     Box(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            // 页签
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Dimens.screenPadding, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                listOf("书架", "阅读历史").forEachIndexed { i, label ->
-                    Text(
-                        text = label,
-                        fontSize = if (i == tab) 21.sp else 19.sp,
-                        fontWeight = if (i == tab) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (i == tab) MiuixTheme.colorScheme.onBackground
-                        else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        modifier = Modifier.clickable { tab = i },
-                    )
-                }
-            }
-
-            // 统计行
-            Text(
-                text = if (tab == 0) "0 卷在架" else "还没有阅读记录",
-                fontSize = 12.sp,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier.padding(horizontal = Dimens.screenPadding),
-            )
-
-            Spacer(Modifier.height(14.dp))
-
-            // 工具条
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Dimens.screenPadding),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                listOf("最近阅读", "列表", "排序").forEach { label ->
-                    Text(
-                        text = label,
-                        fontSize = 12.5.sp,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(MiuixTheme.colorScheme.surfaceContainer)
-                            .padding(horizontal = 13.dp, vertical = 7.dp),
-                    )
-                }
-            }
-
-            // 空提示
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
@@ -1499,7 +1505,6 @@ private fun ShelfEmptyLayout(
                 }
             }
 
-            // 底部导入
             Box(Modifier.fillMaxWidth().padding(horizontal = Dimens.screenPadding, vertical = 16.dp)) {
                 Row(
                     Modifier
