@@ -73,9 +73,9 @@ class SourceAutoCheck(
 
     private suspend fun maybeRunFull() {
         val state = fullState.read()
-        val gap = System.currentTimeMillis() - fullState.lastFinishedAt()
+        val gap: Long = System.currentTimeMillis() - fullState.lastFinishedAt()
         // 还没跑完一轮：按游标继续；跑完过且距上次满 15 天才重开
-        if (state.cursor == 0 && gap > 0 && gap < HALF_MONTH_MS) return
+        if (state.cursor == 0 && gap in 1L until HALF_MONTH_MS) return
         runFullBatch()
     }
 
