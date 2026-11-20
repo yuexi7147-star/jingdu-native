@@ -46,6 +46,7 @@ class SourceAuditService(
             val kind = when (verdict) {
                 is SourceAudit.Verdict.LoginRequired -> SourceAuditReport.Kind.LOGIN
                 is SourceAudit.Verdict.Harmful -> SourceAuditReport.Kind.HARMFUL
+                is SourceAudit.Verdict.NotNovel -> SourceAuditReport.Kind.NOT_NOVEL
             }
             hits += SourceAuditReport.Removed(src.id, src.name, verdict.reason, kind)
             entries += SourceQuarantine.Entry(

@@ -76,6 +76,7 @@ fun SourceAuditSection(
 private fun AuditReportDialog(report: SourceAuditReport, onDismiss: () -> Unit) {
     val login = report.removed.filter { it.kind == SourceAuditReport.Kind.LOGIN }
     val harmful = report.removed.filter { it.kind == SourceAuditReport.Kind.HARMFUL }
+    val notNovel = report.removed.filter { it.kind == SourceAuditReport.Kind.NOT_NOVEL }
 
     AppAlertDialog(
         title = if (report.isEmpty) "检查完毕" else "已移除 ${report.removed.size} 个来源",
@@ -101,6 +102,19 @@ private fun AuditReportDialog(report: SourceAuditReport, onDismiss: () -> Unit) 
                     style = MiuixTheme.textStyles.subtitle,
                 )
                 login.forEach {
+                    Text(
+                        text = "· ${it.name} — ${it.reason}",
+                        style = MiuixTheme.textStyles.body2,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                }
+            }
+            if (notNovel.isNotEmpty()) {
+                Text(
+                    text = "非小说类（${notNovel.size}）",
+                    style = MiuixTheme.textStyles.subtitle,
+                )
+                notNovel.forEach {
                     Text(
                         text = "· ${it.name} — ${it.reason}",
                         style = MiuixTheme.textStyles.body2,

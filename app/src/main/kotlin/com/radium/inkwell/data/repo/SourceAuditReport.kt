@@ -16,9 +16,10 @@ data class SourceAuditReport(
         val kind: Kind,
     )
 
-    enum class Kind { LOGIN, HARMFUL }
+    enum class Kind { LOGIN, HARMFUL, NOT_NOVEL }
 
     val isEmpty: Boolean get() = removed.isEmpty()
     val loginCount: Int get() = removed.count { it.kind == Kind.LOGIN }
     val harmfulCount: Int get() = removed.count { it.kind == Kind.HARMFUL }
+    val notNovelCount: Int get() = removed.count { it.kind == Kind.NOT_NOVEL }
 }
