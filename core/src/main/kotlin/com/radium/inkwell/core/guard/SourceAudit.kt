@@ -25,6 +25,8 @@ object SourceAudit {
 
         data class LoginRequired(override val reason: String) : Verdict
         data class Harmful(override val reason: String, val score: Int) : Verdict
+        /** 非小说类：漫画、听书、音频、教材等 */
+        data class NotNovel(override val reason: String) : Verdict
     }
 
     data class BookEvidence(
@@ -51,7 +53,10 @@ object SourceAudit {
         // 一、需要登录：字段判定，命中即删
         requiresLogin(json)?.let { return Verdict.LoginRequired(it) }
 
-        // 二、内容违规：累计分
+        // 二、非小说类（漫画 / 听书 / 音频 / 教材）
+        NotNovel.check(json, name, group)?.let { return Verdict.NotNovel(it) }
+
+        // 三、内容违规：累计分
         val hits = mutableListOf<String>()
         var score = 0
 
