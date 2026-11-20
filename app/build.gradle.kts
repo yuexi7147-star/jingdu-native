@@ -137,7 +137,6 @@ dependencies {
     baselineProfile(project(":baselineprofile"))
 
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.androidx.work.runtime)
     implementation(libs.kotlinx.serialization.json)
 
     val composeBom = platform(libs.compose.bom)

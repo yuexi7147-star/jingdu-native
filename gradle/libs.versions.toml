@@ -9,7 +9,6 @@ kotlin = "2.4.21"
 ksp = "2.3.14"
 coroutines = "1.11.0"
 # 后台定时校验来源可用性（每天的轻量校验 + 每 7 天的完整校验）
-work = "2.10.0"
 # 1.13.0 撤回 1.12.0 对序列化异常的包装行为，并改善 JsonElement.toString 性能。
 serialization = "1.13.0"
 # **稳定的 compose-bom**（Compose 1.12.x）。从前用 compose-bom-alpha（1.13 beta）是为了 M3 Expressive，
@@ -74,7 +73,6 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
-androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-ui = { module = "androidx.compose.ui:ui" }
