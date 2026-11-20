@@ -110,6 +110,8 @@ fun SourceManageScreen(
     val sort by viewModel.sort.collectAsStateWithLifecycle()
     val groupFilter by viewModel.group.collectAsStateWithLifecycle()
     val groups by viewModel.groups.collectAsStateWithLifecycle()
+    val auditRunning by viewModel.auditRunning.collectAsStateWithLifecycle()
+    val auditReport by viewModel.auditReport.collectAsStateWithLifecycle()
     val failedCount by viewModel.failedCount.collectAsStateWithLifecycle()
     val options by viewModel.options.collectAsStateWithLifecycle()
     val importing by viewModel.importing.collectAsStateWithLifecycle()
@@ -326,6 +328,15 @@ fun SourceManageScreen(
                 ),
                 overscrollEffect = null,
             ) {
+                item {
+                    SourceAuditSection(
+                        running = auditRunning,
+                        report = auditReport,
+                        onRun = viewModel::runSourceAudit,
+                        onDismissReport = viewModel::dismissAuditReport,
+                        modifier = Modifier.padding(bottom = Dimens.gapM),
+                    )
+                }
                 // 一张卡装下整个列表（HyperOS 的灰底白卡），行与行之间不留缝
                 itemsIndexed(visible, key = { _, it -> it.id }) { index, source ->
                     val progress = checkProgress
