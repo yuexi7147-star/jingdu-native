@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_USER_HOME: /home/runner/.android
     steps:
       - uses: actions/checkout@v4
 
@@ -18,18 +20,25 @@ jobs:
 
       - name: Android SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls $ANDROID_HOME | head
           yes | sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
           sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-37" "build-tools;36.0.0" > /dev/null 2>&1 || echo "sdk install skipped"
 
+      - name: Keystore dir
+        run: |
+          mkdir -p $ANDROID_USER_HOME
+          chmod -R u+rwX $ANDROID_USER_HOME
+          echo "writable: $ANDROID_USER_HOME"
+
       - name: Build
         run: |
+          set -o pipefail
           chmod +x gradlew
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace 2>&1 | tail -60
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
       - name: Upload
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: apk
           path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
