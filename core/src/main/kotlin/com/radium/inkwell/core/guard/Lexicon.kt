@@ -60,6 +60,16 @@ object Lexicon {
         "nsfw", "adult", "h漫", "黄色", "激情",
     )
 
+    /**
+     * 任何 emoji / 符号区字符。正常的来源名不会带 emoji —— 带了，要么是标记 18+，
+     * 要么是营销噱头，两类都不该留。这条比逐个收录 🔞 ❌ 🚫 覆盖广，也不会漏变体
+     * （彩色版与文字版差一个 U+FE0F）。
+     */
+    private val EMOJI = Regex("[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\uFE0F\u2B00-\u2BFF]")
+
+    /** 独立的 18：排除 1800 这类长数字 */
+    private val AGE_18 = Regex("(?<![0-9])18(?![0-9])")
+
     private const val SOFT_WEIGHT = 8
 
     /** 去掉空白与常见分隔符，全角转半角；emoji 原样保留 */
@@ -92,7 +102,10 @@ object Lexicon {
     fun firstHardHit(text: String): String? {
         if (text.isBlank()) return null
         val t = normalize(text)
-        return (HARD + SYMBOLS + STRONG_LABEL + STYLE_LABEL).firstOrNull { t.contains(it) }
+        (HARD + SYMBOLS + STRONG_LABEL + STYLE_LABEL).firstOrNull { t.contains(it) }?.let { return it }
+        if (EMOJI.containsMatchIn(text)) return "符号标记"
+        if (AGE_18.containsMatchIn(t)) return "18"
+        return null
     }
 
     /** 单段文本得分：硬信号 / 符号 / 强标签直接满 60，擦边词累加 */
@@ -103,6 +116,8 @@ object Lexicon {
         if (SYMBOLS.any { t.contains(it) }) return 60
         if (STRONG_LABEL.any { t.contains(it) }) return 60
         if (STYLE_LABEL.any { t.contains(it) }) return 60
+        if (EMOJI.containsMatchIn(text)) return 60
+        if (AGE_18.containsMatchIn(t)) return 40
         var s = 0
         for (w in SOFT) if (t.contains(w)) s += SOFT_WEIGHT
         return minOf(s, 60)

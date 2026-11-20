@@ -39,6 +39,8 @@ val appModule = module {
             .build()
     }
     single { com.radium.inkwell.data.repo.SourceQuarantine(androidContext()) }
+    single { com.radium.inkwell.data.repo.SuspiciousCounter(androidContext()) }
+    single { com.radium.inkwell.data.repo.SourceLightCheck(get()) }
     single { com.radium.inkwell.data.repo.SourceAuditService(get(), get()) }
     single { get<InkwellDb>().bookDao() }
     single { get<InkwellDb>().chapterDao() }
