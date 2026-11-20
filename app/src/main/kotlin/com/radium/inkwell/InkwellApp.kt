@@ -119,6 +119,11 @@ class InkwellApp : Application(), SingletonImageLoader.Factory {
         ProcessLifecycleOwner.get().lifecycle.addObserver(
             object : DefaultLifecycleObserver {
                 override fun onStart(owner: LifecycleOwner) {
+        runCatching {
+            org.koin.core.context.GlobalContext.get()
+                .get<com.radium.inkwell.data.repo.SourceAutoCheck>()
+                .onAppStart()
+        }
                     UsageLog.event("app.foreground")
                 }
 

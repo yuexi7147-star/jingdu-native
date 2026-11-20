@@ -113,8 +113,6 @@ class SourceManageViewModel(
     fun setAutoCheck(on: Boolean) {
         _autoCheck.value = on
         prefs.edit().putBoolean("enabled", on).apply()
-        if (on) com.radium.inkwell.data.repo.SourceCheckScheduler.enable(context, _autoCheckWifiOnly.value)
-        else com.radium.inkwell.data.repo.SourceCheckScheduler.disable(context)
     }
 
     private val _autoFull = MutableStateFlow(prefs.getBoolean("full_enabled", false))
@@ -127,8 +125,6 @@ class SourceManageViewModel(
     fun setAutoFull(on: Boolean) {
         _autoFull.value = on
         prefs.edit().putBoolean("full_enabled", on).apply()
-        if (on) com.radium.inkwell.data.repo.SourceCheckScheduler.enableFull(context, _autoCheckWifiOnly.value)
-        else com.radium.inkwell.data.repo.SourceCheckScheduler.disableFull(context)
     }
 
     fun refreshFullState() {
@@ -138,8 +134,7 @@ class SourceManageViewModel(
     fun setAutoCheckWifiOnly(on: Boolean) {
         _autoCheckWifiOnly.value = on
         prefs.edit().putBoolean("wifi_only", on).apply()
-        if (_autoCheck.value) com.radium.inkwell.data.repo.SourceCheckScheduler.enable(context, on)
-        if (_autoFull.value) com.radium.inkwell.data.repo.SourceCheckScheduler.enableFull(context, on)
+
     }
 
     // ---- 安全性检查 ----
