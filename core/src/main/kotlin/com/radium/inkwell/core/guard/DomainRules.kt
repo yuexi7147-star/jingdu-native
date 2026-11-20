@@ -18,7 +18,12 @@ object DomainRules {
     )
 
     /** 成人内容站常用的域名片段 */
-    private val SUSPICIOUS_PART = listOf("avmoo", "javbus", "javdb", "missav", "hanime")
+    private val SUSPICIOUS_PART = listOf(
+        "avmoo", "javbus", "javdb", "missav", "hanime",
+        // 常见成人小说站
+        "po18", "sesebook", "blpopo", "pdok", "porn", "hentai",
+        "sebooks", "lumanovel", "xbookcn",
+    )
 
     fun check(host: String): String? {
         if (host.isBlank()) return null
