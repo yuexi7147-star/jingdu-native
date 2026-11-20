@@ -101,6 +101,28 @@ class SourceManageViewModel(
     private val auditService: com.radium.inkwell.data.repo.SourceAuditService,
 ) : ViewModel() {
 
+    // ---- 自动校验 ----
+    private val prefs = context.getSharedPreferences("source_auto_check", Context.MODE_PRIVATE)
+
+    private val _autoCheck = MutableStateFlow(prefs.getBoolean("enabled", false))
+    val autoCheck: StateFlow<Boolean> = _autoCheck.asStateFlow()
+
+    private val _autoCheckWifiOnly = MutableStateFlow(prefs.getBoolean("wifi_only", true))
+    val autoCheckWifiOnly: StateFlow<Boolean> = _autoCheckWifiOnly.asStateFlow()
+
+    fun setAutoCheck(on: Boolean) {
+        _autoCheck.value = on
+        prefs.edit().putBoolean("enabled", on).apply()
+        if (on) com.radium.inkwell.data.repo.SourceCheckScheduler.enable(context, _autoCheckWifiOnly.value)
+        else com.radium.inkwell.data.repo.SourceCheckScheduler.disable(context)
+    }
+
+    fun setAutoCheckWifiOnly(on: Boolean) {
+        _autoCheckWifiOnly.value = on
+        prefs.edit().putBoolean("wifi_only", on).apply()
+        if (_autoCheck.value) com.radium.inkwell.data.repo.SourceCheckScheduler.enable(context, on)
+    }
+
     // ---- 安全性检查 ----
     private val _auditRunning = MutableStateFlow(false)
     val auditRunning: StateFlow<Boolean> = _auditRunning.asStateFlow()

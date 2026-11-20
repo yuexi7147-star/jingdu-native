@@ -24,6 +24,7 @@ import com.radium.inkwell.ui.components.SectionHeader
 import com.radium.inkwell.ui.components.SettingFootnote
 import com.radium.inkwell.ui.components.SettingGroup
 import com.radium.inkwell.ui.components.SettingRow
+import com.radium.inkwell.ui.components.SwitchRow
 import com.radium.inkwell.ui.components.SettingGroupPosition
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Text
@@ -41,6 +42,10 @@ fun SourceAuditSection(
     report: SourceAuditReport?,
     onRun: () -> Unit,
     onDismissReport: () -> Unit,
+    autoCheck: Boolean,
+    onToggleAutoCheck: (Boolean) -> Unit,
+    wifiOnly: Boolean,
+    onToggleWifiOnly: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -65,6 +70,26 @@ fun SourceAuditSection(
             )
         }
         SettingFootnote("检查只读本地数据，不联网；几百个来源通常几秒完成。移除的来源会记在隔离区，可随时恢复。")
+
+        SectionHeader("自动校验")
+        SettingGroup {
+            SwitchRow(
+                title = "每天自动校验",
+                subtitle = "只测站点还能不能打开，失效的自动移除（可在隔离区恢复）",
+                checked = autoCheck,
+                onCheckedChange = onToggleAutoCheck,
+                position = if (autoCheck) SettingGroupPosition.First else SettingGroupPosition.Alone,
+            )
+            if (autoCheck) {
+                SwitchRow(
+                    title = "只在 Wi-Fi 下校验",
+                    checked = wifiOnly,
+                    onCheckedChange = onToggleWifiOnly,
+                    position = SettingGroupPosition.Last,
+                )
+            }
+        }
+        SettingFootnote("每天一次轻量校验（DNS + 连通性），十几分钟跑完。确定失效的（域名没了、404）立即移除；疑似失效的（403、5xx、超时）要连续 3 次才移除，避免站点临时抽风被误删。")
     }
 
     if (report != null) {

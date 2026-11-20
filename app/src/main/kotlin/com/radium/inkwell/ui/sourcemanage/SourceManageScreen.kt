@@ -112,6 +112,8 @@ fun SourceManageScreen(
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val auditRunning by viewModel.auditRunning.collectAsStateWithLifecycle()
     val auditReport by viewModel.auditReport.collectAsStateWithLifecycle()
+    val autoCheck by viewModel.autoCheck.collectAsStateWithLifecycle()
+    val wifiOnly by viewModel.autoCheckWifiOnly.collectAsStateWithLifecycle()
     val failedCount by viewModel.failedCount.collectAsStateWithLifecycle()
     val options by viewModel.options.collectAsStateWithLifecycle()
     val importing by viewModel.importing.collectAsStateWithLifecycle()
@@ -334,6 +336,10 @@ fun SourceManageScreen(
                         report = auditReport,
                         onRun = viewModel::runSourceAudit,
                         onDismissReport = viewModel::dismissAuditReport,
+                        autoCheck = autoCheck,
+                        onToggleAutoCheck = viewModel::setAutoCheck,
+                        wifiOnly = wifiOnly,
+                        onToggleWifiOnly = viewModel::setAutoCheckWifiOnly,
                         modifier = Modifier.padding(bottom = Dimens.gapM),
                     )
                 }
