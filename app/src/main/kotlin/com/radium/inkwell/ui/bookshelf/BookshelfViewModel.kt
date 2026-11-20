@@ -1,5 +1,8 @@
 package com.radium.inkwell.ui.bookshelf
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import android.net.Uri
 import com.radium.inkwell.util.UsageLog
 import androidx.lifecycle.ViewModel
