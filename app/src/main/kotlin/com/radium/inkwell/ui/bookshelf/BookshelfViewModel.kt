@@ -257,7 +257,7 @@ class BookshelfViewModel(
     }
 
     /** 排序方式：0 = 最近阅读，1 = 最近添加，2 = 书名 */
-    private val _sortMode by mutableStateOf(0)
+    private var _sortMode by mutableStateOf(0)
     val sortMode: Int get() = _sortMode
 
     fun cycleSort() {
