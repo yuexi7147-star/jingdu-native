@@ -27,7 +27,14 @@ jobs:
         run: |
           mkdir -p $ANDROID_USER_HOME $GITHUB_WORKSPACE/keys
           chmod -R u+rwX $ANDROID_USER_HOME
-          keytool -genkeypair -v -keystore $GITHUB_WORKSPACE/keys/jingdu.jks             -alias jingdu -keyalg RSA -keysize 2048 -validity 10000             -storepass jingdu123 -keypass jingdu123             -dname "CN=Jingdu, OU=Dev, O=Shiye, L=CN, S=CN, C=CN"
+          # 仓库里带着固定 keystore：只有它不存在时才生成。
+          # 每次新生成一对密钥 = 每次签名都不同 = 用户只能卸载重装、数据全丢。
+          if [ ! -f "$GITHUB_WORKSPACE/keys/jingdu.jks" ]; then
+            echo "!! 仓库里没有 keys/jingdu.jks，临时生成一份（这次装的包以后无法覆盖升级）"
+            keytool -genkeypair -v -keystore $GITHUB_WORKSPACE/keys/jingdu.jks               -alias jingdu -keyalg RSA -keysize 2048 -validity 10000               -storepass jingdu123 -keypass jingdu123               -dname "CN=Jingdu, OU=Dev, O=Shiye, L=CN, S=CN, C=CN"
+          else
+            echo "使用仓库内固定 keystore"
+          fi
 
       - name: Build
         env:
