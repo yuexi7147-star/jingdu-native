@@ -69,8 +69,6 @@ fun AppearanceSettingsScreen(
     val duplicateHint = appPrefs.duplicateHintEnabledState.collectAsStateWithLifecycle().value ?: true
     val bookshelfLayout = appPrefs.bookshelfLayoutState.collectAsStateWithLifecycle().value ?: BookshelfLayout.GRID
     val bookshelfColumns = appPrefs.bookshelfColumnsState.collectAsStateWithLifecycle().value ?: ShelfColumns.DEFAULT
-    var appIcon by remember { mutableStateOf(AppIconManager.current(context)) }
-    var showIconPicker by remember { mutableStateOf(false) }
 
     val pageColor = settingsPageColor()
     val topBarScroll = rememberAppTopBarScroll()
@@ -166,20 +164,6 @@ fun AppearanceSettingsScreen(
         }
     }
 
-    if (showIconPicker) {
-        AppIconSheet(
-            selected = appIcon,
-            onSelect = { picked ->
-                showIconPicker = false
-                if (picked != appIcon) {
-                    AppIconManager.apply(context, picked)
-                    appIcon = picked
-                    messages.emit("已换成「${picked.label}」，桌面图标稍后刷新")
-                }
-            },
-            onDismiss = { showIconPicker = false },
-        )
-    }
 }
 
 /**

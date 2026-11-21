@@ -149,7 +149,7 @@ fun SettingsScreen(
     var clearingCache by remember { mutableStateOf(false) }
     val pruneDays = appPrefs.cacheAutoPruneDaysState.collectAsStateWithLifecycle().value
         ?: AppPrefs.DEFAULT_CACHE_AUTO_PRUNE_DAYS
-    val autoCheckUpdate = appPrefs.autoCheckUpdateState.collectAsStateWithLifecycle().value ?: true
+    val autoCheckUpdate = false  // 更新入口已移除：后台不再检查，免得弹出一个没地方关的窗口
     val duplicateCount = rememberVisibleDuplicateCount()
     var showDuplicates by remember { mutableStateOf(false) }
 
@@ -267,25 +267,11 @@ fun SettingsScreen(
                 }
 
                 Spacer(Modifier.weight(1f))
-                Text(
-                    "Inkwell  v${updateCheck.currentVersion}",
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            start = Dimens.rowHorizontal,
-                            end = Dimens.rowHorizontal,
-                            top = Dimens.gapXL,
-                            bottom = Dimens.gapXL + padding.calculateBottomPadding(),
-                        ),
-                    style = MiuixTheme.textStyles.footnote1,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    textAlign = TextAlign.Center,
-                )
+                
             }
         }
     }
 
-    updateCheck.UpdateDialog()
 
     if (showDuplicates) {
         StandaloneDuplicateBooksSheet(messages = messages, onDismiss = { showDuplicates = false })
