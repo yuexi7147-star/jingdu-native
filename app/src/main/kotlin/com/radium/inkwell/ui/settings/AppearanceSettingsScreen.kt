@@ -98,12 +98,6 @@ fun AppearanceSettingsScreen(
                     onClick = onOpenTheme,
                     position = SettingGroupPosition.First,
                 )
-                SettingRow(
-                    title = "应用图标",
-                    value = appIcon.label,
-                    onClick = { showIconPicker = true },
-                    position = SettingGroupPosition.Middle,
-                )
                 SwitchRow(
                     title = "退出前确认",
                     subtitle = "在书架首页返回桌面前询问一次",

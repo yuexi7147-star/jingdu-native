@@ -266,53 +266,6 @@ fun SettingsScreen(
                     )
                 }
 
-                SectionHeader("更新")
-                SettingGroup {
-                    // 启动时在后台查到了新版：写「0.5.5 可更新」，没看过那一版的弹窗时再亮一个红点（同书架齿轮上那个）。
-                    // 点一下直接弹那一版，不再转一圈重查（见 UpdateCheckState）
-                    SettingRow(
-                        title = "检查更新",
-                        icon = MiuixIcons.Update,
-                        value = when {
-                            updateCheck.checking -> "正在检查…"
-                            updateCheck.available != null -> "${updateCheck.available} 可更新"
-                            else -> null
-                        },
-                        badge = updateCheck.dot && !updateCheck.checking,
-                        onClick = updateCheck.check,
-                        position = SettingGroupPosition.First,
-                    )
-                    SwitchRow(
-                        title = "启动时检查更新",
-                        icon = MiuixIcons.Refresh,
-                        checked = autoCheckUpdate,
-                        onCheckedChange = { on -> scope.launch { appPrefs.setAutoCheckUpdate(on) } },
-                        position = SettingGroupPosition.Middle,
-                    )
-                    // 更新源 / 渠道从前单独占一个二级页（整页就这两行），现在直接摆在这里，点了从行上弹出选项
-                    UpdateSourceRow(
-                        current = updateCheck.source,
-                        onPick = { picked -> scope.launch { appPrefs.setUpdateSource(picked) } },
-                        icon = MiuixIcons.Link,
-                        position = SettingGroupPosition.Middle,
-                    )
-                    UpdateChannelRow(
-                        current = updateCheck.channel,
-                        onPick = { picked -> scope.launch { appPrefs.setUpdateChannel(picked) } },
-                        icon = MiuixIcons.Merge,
-                        position = SettingGroupPosition.Last,
-                    )
-                }
-
-                SettingGroup {
-                    SettingRow(
-                        title = "关于",
-                        icon = MiuixIcons.Info,
-                        onClick = onOpenAbout,
-                        position = SettingGroupPosition.Alone,
-                    )
-                }
-
                 Spacer(Modifier.weight(1f))
                 Text(
                     "Inkwell  v${updateCheck.currentVersion}",
